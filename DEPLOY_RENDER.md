@@ -112,4 +112,7 @@ git push
 - **Los archivos subidos** (documentos) se pierden en cada deploy porque el disco del
   Web Service es efímero.
 - **SSL:** la conexión usa `useSSL=false`. Si Clever Cloud lo exigiera, cambia la URL en
-  `config.jsp` a `useSSL=true`.
+  `src/main/java/edu/uts/PoolInicializador.java` a `useSSL=true`.
+- **Warning "Invalid shutdown command [HEAD / HTTP/1.1]":** no es un error. Son las sondas
+  de Render que caen en el puerto de apagado de Tomcat (8005). Ya se desactivó ese puerto
+  en el `Dockerfile` (`port="-1"` en `server.xml`) para eliminar el ruido en los logs.

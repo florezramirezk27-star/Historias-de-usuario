@@ -18,6 +18,8 @@ services:
     dockerfilePath: ./Dockerfile
     plan: free                 # cámbialo a 0.5c-512mb para que no se duerma
     region: oregon
+    # Health check HTTP real (login.jsp no hace consultas a la BD)
+    healthCheckPath: /login.jsp
     envVars:
       # Render espera el puerto indicado en PORT; Tomcat escucha en 8080.
       - key: PORT

@@ -26,5 +26,12 @@ FROM tomcat:9.0-jdk17-temurin
 RUN rm -rf /usr/local/tomcat/webapps/*
 COPY --from=build /build/target/tguts.war /usr/local/tomcat/webapps/ROOT.war
 
+# Desactiva el puerto de apagado (8005) de Tomcat.
+# Render envía sondas HTTP al contenedor y, al caer en el puerto 8005,
+# generan warnings repetidos: "Invalid shutdown command [HEAD / HTTP/1.1]".
+# Con port="-1" el puerto 8005 deja de escuchar (config segura/STIG);
+# el puerto HTTP 8080 no se ve afectado.
+RUN sed -i 's/<Server port="8005" shutdown="SHUTDOWN">/<Server port="-1" shutdown="SHUTDOWN">/' /usr/local/tomcat/conf/server.xml
+
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
