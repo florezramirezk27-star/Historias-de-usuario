@@ -4,7 +4,8 @@
 
 El sistema gestiona todo el proceso de un trabajo de grado: desde la publicación de ideas por parte de los docentes, el registro y aprobación del anteproyecto, la asignación de director y evaluador, la entrega del documento final, la sustentación y las notificaciones del proceso, además de trámites (retiro, prórroga y beneficios), calendario académico, formatos e informes.
 
-> Proyecto **sin clases `.java`**: toda la lógica se implementa con JSP y la librería **JSTL** (core, fmt, functions y sql).
+> Proyecto con la lógica 100 % en **JSP + JSTL** (core, fmt, functions y sql). La única clase
+> **Java** es `PoolInicializador`, que crea el pool de conexiones JDBC (HikariCP).
 
 ---
 
@@ -16,7 +17,7 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 | Empaquetado | Maven (WAR) |
 | Servidor | Apache Tomcat 9 (Java EE `javax`) |
 | Base de datos | MySQL / MariaDB vía XAMPP |
-| Conexión | JSTL `<sql:setDataSource>` + MySQL Connector/J 8.3 |
+| Conexión | JSTL `<sql:setDataSource>` + pool **HikariCP** + MySQL Connector/J 8.3 |
 | Subida de archivos | Apache Commons FileUpload 1.5 / Commons IO 2.15 |
 | Seguridad | Hash SHA-256 con salt + token CSRF |
 
@@ -117,21 +118,28 @@ BORRADOR → ENVIADO → APROBADO_DIRECTOR → APROBADO_EVALUADOR
 
 ```
 parcia_2jstl/
-├── README.md
+├── README.md              # Documentación
+├── DEPLOY_RENDER.md       # Guía de despliegue en Render
+├── Dockerfile             # Imagen Tomcat 9 + WAR (Render)
+├── render.yaml            # Blueprint de despliegue en Render
+├── .dockerignore
 ├── .gitignore
 └── tguts/
-    ├── pom.xml                  # Configuración Maven (WAR)
+    ├── pom.xml            # Configuración Maven (WAR)
     ├── sql/
-    │   └── db_tgd_uts.sql       # Script de base de datos + datos de prueba
-    └── src/main/webapp/
-        ├── *.jsp                # Páginas del sistema
-        ├── common/              # Configuración, cabecera, menú, CSRF, guardas
-        ├── css/style.css        # Estilos
-        ├── img/                 # Imágenes
-        ├── formatos/            # Formatos oficiales
-        └── WEB-INF/
-            ├── web.xml
-            └── lib/             # Dependencias .jar
+    │   └── db_tgd_uts.sql # Script de base de datos + datos de prueba
+    └── src/
+        ├── main/java/
+        │   └── edu/uts/PoolInicializador.java   # Pool de conexiones (HikariCP)
+        └── main/webapp/
+            ├── *.jsp                # Páginas del sistema
+            ├── common/              # Configuración, cabecera, menú, CSRF, guardas
+            ├── css/style.css        # Estilos
+            ├── img/                 # Imágenes
+            ├── formatos/            # Formatos oficiales
+            └── WEB-INF/
+                ├── web.xml
+                └── lib/             # Dependencias .jar
 ```
 
 ---
@@ -209,5 +217,5 @@ Guía detallada: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md).
 
 ## Notas
 
-- Los datos de conexión se configuran en `tguts/src/main/webapp/common/config.jsp` (usuario `root`, sin contraseña, para XAMPP por defecto; en la nube se toman de variables de entorno).
+- Las credenciales de BD se leen de variables de entorno (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) en `src/main/java/edu/uts/PoolInicializador.java`; sin ellas usa XAMPP (`localhost`, `root`, sin contraseña). `common/config.jsp` apunta a ese pool con `dataSource="${applicationScope.ds}"`.
 - El envío real de correos (SMTP) está pendiente; por ahora las notificaciones se registran en la base de datos.

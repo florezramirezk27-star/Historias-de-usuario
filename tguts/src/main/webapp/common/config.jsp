@@ -11,33 +11,10 @@
 <%-- Debe ir antes de leer cualquier parámetro del formulario --%>
 <fmt:requestEncoding value="UTF-8"/>
 
-<%-- Fuente de datos.
-     En la nube (Render) se toman de variables de entorno;
-     en local (XAMPP) se usan los valores por defecto. --%>
-<%
-    String dbHost = System.getenv("DB_HOST");
-    if (dbHost == null || dbHost.isEmpty()) dbHost = "localhost";
-    String dbPort = System.getenv("DB_PORT");
-    if (dbPort == null || dbPort.isEmpty()) dbPort = "3306";
-    String dbName = System.getenv("DB_NAME");
-    if (dbName == null || dbName.isEmpty()) dbName = "db_tgd_uts";
-    String dbUser = System.getenv("DB_USER");
-    if (dbUser == null || dbUser.isEmpty()) dbUser = "root";
-    String dbPass = System.getenv("DB_PASSWORD");
-    if (dbPass == null) dbPass = "";
-
-    pageContext.setAttribute("dsUrl",
-        "jdbc:mysql://" + dbHost + ":" + dbPort + "/" + dbName
-        + "?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC");
-    pageContext.setAttribute("dsUser", dbUser);
-    pageContext.setAttribute("dsPass", dbPass);
-%>
-
-<sql:setDataSource var="ds"
-    driver="com.mysql.cj.jdbc.Driver"
-    url="${dsUrl}"
-    user="${dsUser}"
-    password="${dsPass}"/>
+<%-- Fuente de datos: pool de conexiones (HikariCP) creado por
+     edu.uts.PoolInicializador al arrancar la app. Lee las variables de
+     entorno o usa los valores de XAMPP por defecto. --%>
+<sql:setDataSource var="ds" dataSource="${applicationScope.ds}"/>
 
 <%-- CSRF token para formularios POST --%>
 <%@ include file="csrf.jsp" %>
