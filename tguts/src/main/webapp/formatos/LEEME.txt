@@ -1,16 +1,17 @@
 CARPETA DE DOCUMENTOS DE FORMATOS
 =================================
 
-Esta carpeta guarda los archivos (PDF/Word) que se suben desde la
-aplicacion en el modulo "Formatos de grado" (Administracion o
-Coordinacion -> "Documento desde tu PC").
+Esta carpeta contiene los documentos base de los formatos oficiales del
+proceso de grado:
 
-La aplicacion tambien permite actualizar el documento de un formato
-existente desde la misma tabla.
+  - FDC-124-Anteproyecto.pdf  -> Formato de anteproyecto (idea)
+  - FDC-125-DocumentoFinal.pdf -> Formato de documento final
 
-Los archivos subidos quedan con nombres tipo: fmt_<timestamp>_<nombre>
-y la base de datos guarda su ruta (formatos/fmt_...). El enlace
-"Abrir formato" apunta directamente a estos archivos.
+La tabla formatos guarda la URL o ruta del documento (columna url) y el
+modulo "Formatos de grado" (Administracion o Coordinacion) permite
+registrar o actualizar ese enlace. Puede apuntar a un archivo local de
+esta carpeta (ruta relativa, como formatos/FDC-124-Anteproyecto.pdf) o a
+una URL externa (https://...).
 
 NOTA: al hacer Copy-Item desde src a webapps no se borran los archivos
 que ya estan en esta carpeta (la sincronizacion solo sobrescribe).

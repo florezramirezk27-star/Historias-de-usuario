@@ -15,6 +15,7 @@
 
 <%-- Proceso de inicio de sesión --%>
 <c:if test="${pageContext.request.method eq 'POST'}">
+    <%@ include file="common/verify_csrf.jsp" %>
     <sql:query dataSource="${ds}" var="qLogin">
         SELECT * FROM usuarios
         WHERE email = ? AND password = SHA2(CONCAT(?, '|tguts-salt'), 256) AND activo = 1
@@ -67,6 +68,7 @@
         </c:if>
 
         <form method="post" action="login.jsp" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="${csrfToken}">
             <label for="email">Correo electrónico</label>
             <input type="email" id="email" name="email" required autofocus autocomplete="off"
                    value="${fn:escapeXml(param.email)}">

@@ -16,6 +16,7 @@
 
 <%-- ================= PROCESO DE ENVÍOS (POST) ================= --%>
 <c:if test="${pageContext.request.method eq 'POST'}">
+    <%@ include file="common/verify_csrf.jsp" %>
 
     <%-- ---------- CREAR ---------- --%>
     <c:if test="${param.accion eq 'crear'}">
@@ -232,6 +233,7 @@
     </h2>
 
     <form method="post" action="usuarios.jsp">
+        <input type="hidden" name="csrf_token" value="${csrfToken}">
         <input type="hidden" name="accion" value="${modo eq 'editar' ? 'actualizar' : 'crear'}">
         <c:if test="${modo eq 'editar'}">
             <input type="hidden" name="id" value="${fId}">
@@ -324,6 +326,7 @@
                     <a class="btn btn-mini btn-gris" href="usuarios.jsp?accion=editar&id=${u.id}">Editar</a>
                     <form method="post" action="usuarios.jsp" style="display:inline"
                           onsubmit="return confirm('¿Eliminar al usuario ${fn:escapeXml(u.nombre)}?')">
+                        <input type="hidden" name="csrf_token" value="${csrfToken}">
                         <input type="hidden" name="accion" value="eliminar">
                         <input type="hidden" name="id" value="${u.id}">
                         <button class="btn btn-mini btn-rojo" type="submit">Eliminar</button>

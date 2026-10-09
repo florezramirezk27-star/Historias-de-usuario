@@ -1,0 +1,14 @@
+# Archivos que NO deben entrar al contexto de build de Docker
+.git
+.gitignore
+**/target
+**/*.war
+**/*.zip
+.idea
+.vscode
+.settings
+.classpath
+.project
+*.iml
+.DS_Store
+Thumbs.db

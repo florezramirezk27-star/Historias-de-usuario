@@ -161,7 +161,53 @@ Tablas principales en `db_tgd_uts`:
 
 ---
 
+## Despliegue en la nube (Render)
+
+> **Vercel no es compatible con este proyecto**: Vercel solo hospeda sitios estáticos y funciones *serverless* (Node/Python/Go/Ruby); no ejecuta Java, Tomcat ni JSP. El despliegue se hace en **Render** (Docker + Tomcat 9) con una base de datos **MySQL externa en Clever Cloud**.
+
+El repositorio ya incluye todo lo necesario:
+
+| Archivo | Para qué sirve |
+|---|---|
+| `Dockerfile` | Compila el WAR con Maven y lo sirve con **Tomcat 9**. |
+| `.dockerignore` | Excluye `target/`, `.git`, etc. del build. |
+| `render.yaml` | Infraestructura como código (Web Service + variables de entorno). |
+| `common/config.jsp` | Lee la conexión desde variables de entorno (o XAMPP por defecto). |
+
+### Pasos
+
+1. Subir el proyecto a GitHub:
+   ```bash
+   git add .
+   git commit -m "Deploy en Render"
+   git push
+   ```
+2. En Render: **New > Blueprint** y conectar el repositorio (detecta `render.yaml`).
+3. Cuando Render lo pida, pega el valor de `DB_PASSWORD` (no se guarda en el repositorio por seguridad).
+4. Render compila la imagen con el `Dockerfile` y publica la app.
+
+URL pública resultante: `https://tguts-xxxx.onrender.com`.
+
+La base de datos ya está creada e inicializada en Clever Cloud (tablas + datos de prueba).
+
+### Variables de entorno
+
+| Variable | Valor |
+|---|---|
+| `PORT` | `8080` (puerto de Tomcat que espera Render) |
+| `DB_HOST` | `bpdhyrbabuc6fghivcj7-mysql.services.clever-cloud.com` |
+| `DB_PORT` | `3306` |
+| `DB_NAME` | `bpdhyrbabuc6fghivcj7` |
+| `DB_USER` | `urgnhehtkdhpmazp` |
+| `DB_PASSWORD` | *(secreto de Clever Cloud; se configura en Render)* |
+
+**Notas de costo:** todo queda en plan gratuito (Web Service `free` en Render + MySQL addon gratuito de Clever Cloud). El Web Service se duerme tras ~15 min sin tráfico y tarda ~30–60 s en despertar.
+
+Guía detallada: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md).
+
+---
+
 ## Notas
 
-- Los datos de conexión se configuran en `tguts/src/main/webapp/common/config.jsp` (usuario `root`, sin contraseña, para XAMPP por defecto).
+- Los datos de conexión se configuran en `tguts/src/main/webapp/common/config.jsp` (usuario `root`, sin contraseña, para XAMPP por defecto; en la nube se toman de variables de entorno).
 - El envío real de correos (SMTP) está pendiente; por ahora las notificaciones se registran en la base de datos.

@@ -1,0 +1,35 @@
+# =====================================================================
+# render.yaml - Infraestructura como código para Render
+#
+# Despliega la aplicación (Web Service Docker: Tomcat 9 + WAR) y la
+# conecta a la base de datos MySQL externa de Clever Cloud.
+#
+# La contraseña NO se guarda aquí (para no exponerla en Git): Render
+# la pedirá una vez al crear el Blueprint (sync: false).
+# =====================================================================
+
+services:
+  # ------------------------------------------------------------------
+  # Aplicación web (Tomcat 9 + WAR)
+  # ------------------------------------------------------------------
+  - type: web
+    name: tguts
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free                 # cámbialo a 0.5c-512mb para que no se duerma
+    region: oregon
+    envVars:
+      # Render espera el puerto indicado en PORT; Tomcat escucha en 8080.
+      - key: PORT
+        value: 8080
+      # Conexión a la base de datos MySQL de Clever Cloud
+      - key: DB_HOST
+        value: bpdhyrbabuc6fghivcj7-mysql.services.clever-cloud.com
+      - key: DB_PORT
+        value: 3306
+      - key: DB_NAME
+        value: bpdhyrbabuc6fghivcj7
+      - key: DB_USER
+        value: urgnhehtkdhpmazp
+      - key: DB_PASSWORD
+        sync: false            # Render pedirá este valor al crear el servicio

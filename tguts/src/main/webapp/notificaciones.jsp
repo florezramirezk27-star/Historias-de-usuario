@@ -14,6 +14,7 @@
 
 <%-- ===== Marcar todas como leídas (POST) ===== --%>
 <c:if test="${pageContext.request.method eq 'POST' && param.accion eq 'marcar'}">
+    <%@ include file="common/verify_csrf.jsp" %>
     <sql:update dataSource="${ds}">
         UPDATE notificaciones SET leido = 1 WHERE usuario_id = ? AND leido = 0
         <sql:param value="${yo.id}"/>
@@ -51,6 +52,7 @@
 
 <div class="panel">
     <form method="post" action="notificaciones.jsp">
+        <input type="hidden" name="csrf_token" value="${csrfToken}">
         <input type="hidden" name="accion" value="marcar">
         <button class="btn btn-gris" type="submit">Marcar todas como leídas</button>
     </form>
