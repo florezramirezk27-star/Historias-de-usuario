@@ -1,7 +1,9 @@
 <%-- ==========================================================
-     anteproyecto_form.jsp - Estudiante: completa y registra la
-     URL del documento del anteproyecto (RF-14, RF-16, RF-36)
-     Página 100% JSTL, sin scriptlets.
+     anteproyecto_form.jsp - Estudiante: completa y registra el
+     documento del anteproyecto, como ARCHIVO subido o como URL
+     (RF-14, RF-16, RF-36).
+     El formulario usa multipart/form-data; common/config.jsp procesa
+     los campos (Map "campos") y guarda el archivo con validación.
      ========================================================== --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
@@ -61,63 +63,73 @@
 <%-- ===== Proceso del formulario (solo si hubo envío) ===== --%>
 <c:if test="${pageContext.request.method eq 'POST'}">
     <%@ include file="common/verify_csrf.jsp" %>
+
+    <%-- Documento final: archivo subido > URL escrita > documento anterior --%>
+    <c:set var="docFinal" value="${ant.documento}"/>
+    <c:if test="${not empty campos.documento}">
+        <c:set var="docFinal" value="${campos.documento}"/>
+    </c:if>
+    <c:if test="${not empty requestScope.archivo_subido}">
+        <c:set var="docFinal" value="${requestScope.archivo_subido}"/>
+    </c:if>
+
     <c:choose>
-        <c:when test="${empty param.titulo}">
+        <c:when test="${not empty requestScope.archivo_error}">
+            <c:set var="error" value="${requestScope.archivo_error}"/>
+        </c:when>
+        <c:when test="${empty campos.titulo}">
             <c:set var="error" value="El título del anteproyecto es obligatorio."/>
         </c:when>
-        <c:when test="${empty param.director}">
+        <c:when test="${empty campos.director}">
             <c:set var="error" value="Debes seleccionar al director."/>
         </c:when>
-        <c:when test="${empty param.documento && empty ant.documento}">
-            <c:set var="error" value="Debes indicar la URL del documento del anteproyecto."/>
+        <c:when test="${empty docFinal}">
+            <c:set var="error" value="Debes subir un archivo o indicar la URL del documento del anteproyecto."/>
         </c:when>
-        <c:when test="${not empty param.documento && not (fn:startsWith(param.documento, 'http://') || fn:startsWith(param.documento, 'https://'))}">
+        <c:when test="${empty requestScope.archivo_subido && not empty campos.documento
+                        && not (fn:startsWith(campos.documento, 'http://') || fn:startsWith(campos.documento, 'https://'))}">
             <c:set var="error" value="La URL del documento debe comenzar por http:// o https://."/>
         </c:when>
         <c:otherwise>
+            <%-- Transacción: el cambio de estado y la notificación van juntos.
+                 La guarda de estado evita reenviar un anteproyecto ya enviado. --%>
+            <sql:transaction dataSource="${ds}">
+                <sql:update var="filasAnt">
+                    UPDATE anteproyectos
+                    SET titulo = ?, director_id = ?, documento = ?, estado = 'ENVIADO'
+                    WHERE id = ? AND estudiante_id = ? AND estado IN ('BORRADOR','RECHAZADO')
+                    <sql:param value="${campos.titulo}"/>
+                    <sql:param value="${campos.director}"/>
+                    <sql:param value="${docFinal}"/>
+                    <sql:param value="${ant.id}"/>
+                    <sql:param value="${yo.id}"/>
+                </sql:update>
+
+                <c:if test="${filasAnt gt 0}">
+                    <%-- Notificación automática al director (RF-37) --%>
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT director_id,
+                               'Anteproyecto enviado',
+                               CONCAT('El estudiante envió el anteproyecto: ', titulo, '. Espera tu revisión.'),
+                               'ANTEPROYECTO_ENVIADO',
+                               CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = anteproyectos.director_id),
+                                      ' (SMTP pendiente)')
+                        FROM anteproyectos
+                        WHERE id = ?
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                </c:if>
+            </sql:transaction>
+
             <c:choose>
-                <%-- Con URL nueva --%>
-                <c:when test="${not empty param.documento}">
-                    <sql:update dataSource="${ds}">
-                        UPDATE anteproyectos
-                        SET titulo = ?, director_id = ?, documento = ?, estado = 'ENVIADO'
-                        WHERE id = ? AND estudiante_id = ?
-                        <sql:param value="${param.titulo}"/>
-                        <sql:param value="${param.director}"/>
-                        <sql:param value="${param.documento}"/>
-                        <sql:param value="${param.id}"/>
-                        <sql:param value="${yo.id}"/>
-                    </sql:update>
+                <c:when test="${filasAnt gt 0}">
+                    <c:redirect url="anteproyectos.jsp?exito=enviado"/>
                 </c:when>
-                <%-- Se conserva el documento/anterior enlace --%>
                 <c:otherwise>
-                    <sql:update dataSource="${ds}">
-                        UPDATE anteproyectos
-                        SET titulo = ?, director_id = ?, estado = 'ENVIADO'
-                        WHERE id = ? AND estudiante_id = ?
-                        <sql:param value="${param.titulo}"/>
-                        <sql:param value="${param.director}"/>
-                        <sql:param value="${param.id}"/>
-                        <sql:param value="${yo.id}"/>
-                    </sql:update>
+                    <c:set var="error" value="El anteproyecto ya no está en un estado editable."/>
                 </c:otherwise>
             </c:choose>
-
-            <%-- Notificación automática al director (RF-37) --%>
-            <sql:update dataSource="${ds}">
-                INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                SELECT director_id,
-                       'Anteproyecto enviado',
-                       CONCAT('El estudiante envió el anteproyecto: ', titulo, '. Espera tu revisión.'),
-                       'ANTEPROYECTO_ENVIADO',
-                       CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = anteproyectos.director_id),
-                              ' (SMTP pendiente)')
-                FROM anteproyectos
-                WHERE id = ?
-                <sql:param value="${param.id}"/>
-            </sql:update>
-
-            <c:redirect url="anteproyectos.jsp?exito=enviado"/>
         </c:otherwise>
     </c:choose>
 </c:if>
@@ -129,13 +141,13 @@
     ORDER BY nombre
 </sql:query>
 
-<c:set var="vTitulo" value="${not empty param.titulo ? param.titulo : ant.titulo}"/>
-<c:set var="dirSel" value="${not empty param.director ? param.director : ant.director_id}"/>
+<c:set var="vTitulo" value="${not empty campos.titulo ? campos.titulo : ant.titulo}"/>
+<c:set var="dirSel" value="${not empty campos.director ? campos.director : ant.director_id}"/>
 
 <%@ include file="common/header.jsp" %>
 
 <h1>Mi anteproyecto</h1>
-<p class="subtitulo">Completa la información y registra la URL del documento (RF-14, RF-16).</p>
+<p class="subtitulo">Completa la información y adjunta el documento como archivo o enlace (RF-14, RF-16).</p>
 
 <c:if test="${not empty error}">
     <div class="aviso aviso-error"><c:out value="${error}"/></div>
@@ -155,7 +167,7 @@
     <p class="dato"><b>Director:</b> <c:out value="${dirNombre}"/></p>
     <p class="dato"><b>Evaluador:</b> <c:out value="${evalNombre}"/></p>
 
-    <form method="post" action="anteproyecto_form.jsp?id=${ant.id}">
+    <form method="post" action="anteproyecto_form.jsp?id=${ant.id}" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="${csrfToken}">
         <label for="titulo">Título del anteproyecto</label>
         <input type="text" id="titulo" name="titulo" required maxlength="200"
@@ -170,7 +182,11 @@
             </c:forEach>
         </select>
 
-        <label for="documento">URL del documento del anteproyecto</label>
+        <label for="archivo">Documento (archivo: PDF, DOC, DOCX, ODT, PPT o PPTX — máx. 20 MB)</label>
+        <input type="file" id="archivo" name="archivo"
+               accept=".pdf,.doc,.docx,.odt,.ppt,.pptx">
+
+        <label for="documento">… o URL del documento del anteproyecto</label>
         <div class="campo-url">
             <span class="icono-url" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
@@ -183,16 +199,14 @@
             <p class="dato" style="margin-top:10px">
                 <b>Documento actual:</b>
                 <c:choose>
-                    <c:when test="${fn:startsWith(ant.documento, 'http')}">
-                        <a class="enlace-doc" href="${ant.documento}" target="_blank">Abrir enlace</a>
-                    </c:when>
-                    <c:when test="${fn:contains(ant.documento, '/')}">
-                        <c:url value="${ant.documento}" var="docUrl"/>
-                        <a class="enlace-doc" href="${docUrl}" target="_blank">Ver archivo</a>
+                    <c:when test="${fn:startsWith(ant.documento, 'http://') || fn:startsWith(ant.documento, 'https://')}">
+                        <a class="enlace-doc" href="${fn:escapeXml(ant.documento)}" target="_blank" rel="noopener">Abrir enlace</a>
                     </c:when>
                     <c:otherwise>
-                        <c:url value="/uploads/${ant.documento}" var="docUrl"/>
-                        <a class="enlace-doc" href="${docUrl}" target="_blank">Ver archivo</a>
+                        <c:url value="/descargar.jsp" var="docUrl">
+                            <c:param name="f" value="${ant.documento}"/>
+                        </c:url>
+                        <a class="enlace-doc" href="${docUrl}" target="_blank" rel="noopener">Ver archivo</a>
                     </c:otherwise>
                 </c:choose>
             </p>

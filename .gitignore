@@ -3,6 +3,9 @@ target/
 *.war
 *.zip
 
+# Dependencias: el WAR las arma Maven desde el pom.xml (no se versionan)
+tguts/src/main/webapp/WEB-INF/lib/*.jar
+
 # IDE
 .idea/
 *.iml

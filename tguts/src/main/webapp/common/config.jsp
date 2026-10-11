@@ -1,6 +1,7 @@
 <%-- =====================================================================
      config.jsp - Configuración compartida por todas las páginas
-     (codificación UTF-8, fuente de datos XAMPP, CSRF token)
+     (codificación UTF-8, cabeceras de seguridad, fuente de datos y CSRF).
+     Primer include de todas las páginas.
      ===================================================================== --%>
 <%@ page pageEncoding="UTF-8" %>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt" %>
@@ -8,8 +9,15 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions" %>
 
-<%-- Debe ir antes de leer cualquier parámetro del formulario --%>
-<fmt:requestEncoding value="UTF-8"/>
+<%-- Utilidades de seguridad (PBKDF2, subida de documentos, cabeceras) --%>
+<%@ include file="seguridad.jsp" %>
+
+<%-- Codificación y cabeceras de seguridad ANTES de leer parámetros --%>
+<% request.setCharacterEncoding("UTF-8"); %>
+<% pgCabeceras(response); %>
+
+<%-- Campos del formulario como Map (soporta multipart/form-data). --%>
+<% request.setAttribute("campos", pgCampos(request, application)); %>
 
 <%-- Fuente de datos: pool de conexiones (HikariCP) creado por
      edu.uts.PoolInicializador al arrancar la app. Lee las variables de

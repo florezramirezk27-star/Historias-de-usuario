@@ -64,8 +64,8 @@
 </sql:query>
 <c:set var="sust" value="${qSust.rowCount gt 0 ? qSust.rows[0] : null}"/>
 
-<%-- Coordinación/Admin puede ver para programar si el estado es válido --%>
-<c:if test="${(rol eq 'ADMIN' || rol eq 'COORDINACION') && empty sust && ant.estado != 'REVISIÓN_FINAL' && ant.estado != 'APROBADO_EVALUADOR' && ant.estado != 'ENTREGA_DOCUMENTO_FINAL'}">
+<%-- Coordinación/Admin puede ver para programar solo si el estado es Revisión Final --%>
+<c:if test="${(rol eq 'ADMIN' || rol eq 'COORDINACION') && empty sust && ant.estado ne 'REVISIÓN_FINAL'}">
     <c:redirect url="anteproyectos.jsp"/>
 </c:if>
 <%-- Director/Evaluador/Estudiante solo ven si ya existe la sustentación --%>
@@ -80,64 +80,83 @@
         <c:redirect url="403.jsp"/>
     </c:if>
     <c:choose>
+        <c:when test="${not empty sust}">
+            <c:set var="error" value="Este anteproyecto ya tiene una sustentación programada."/>
+        </c:when>
+        <c:when test="${ant.estado ne 'REVISIÓN_FINAL'}">
+            <c:set var="error" value="La sustentación solo puede programarse cuando el trabajo está en Revisión Final."/>
+        </c:when>
         <c:when test="${empty param.fecha || empty param.hora || empty param.lugar}">
             <c:set var="error" value="Fecha, hora y lugar son obligatorios."/>
         </c:when>
         <c:otherwise>
-            <sql:update dataSource="${ds}">
-                INSERT INTO sustentacion (anteproyecto_id, fecha, hora, lugar, resultado)
-                VALUES (?, ?, ?, ?, 'PENDIENTE')
-                <sql:param value="${param.id}"/>
-                <sql:param value="${param.fecha}"/>
-                <sql:param value="${param.hora}"/>
-                <sql:param value="${param.lugar}"/>
-            </sql:update>
-            <sql:update dataSource="${ds}">
-                UPDATE anteproyectos SET estado = 'SUSTENTACIÓN' WHERE id = ?
-                <sql:param value="${param.id}"/>
-            </sql:update>
-            <sql:update dataSource="${ds}">
-                INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                SELECT estudiante_id, 'Sustentación programada',
-                       CONCAT('Tu sustentación fue programada para el ', ?, ' a las ', ?, ' en ', ?, '.'),
-                       'SUSTENTACION_PROGRAMADA',
-                       CONCAT('Correo a ', email, ' (SMTP pendiente)')
-                FROM anteproyectos a JOIN usuarios u ON u.id = a.estudiante_id
-                WHERE a.id = ?
-                <sql:param value="${param.fecha}"/>
-                <sql:param value="${param.hora}"/>
-                <sql:param value="${param.lugar}"/>
-                <sql:param value="${param.id}"/>
-            </sql:update>
-            <sql:update dataSource="${ds}">
-                INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                SELECT director_id, 'Sustentación de tu dirigido programada',
-                       CONCAT('La sustentación del anteproyecto ', (SELECT titulo FROM anteproyectos WHERE id = ?), ' es el ', ?, ' a las ', ?, '.'),
-                       'SUSTENTACION_PROGRAMADA',
-                       CONCAT('Correo a ', email, ' (SMTP pendiente)')
-                FROM anteproyectos a JOIN usuarios u ON u.id = a.director_id
-                WHERE a.id = ?
-                <sql:param value="${param.id}"/>
-                <sql:param value="${param.fecha}"/>
-                <sql:param value="${param.hora}"/>
-                <sql:param value="${param.id}"/>
-            </sql:update>
-            <c:if test="${not empty qAnt.rows[0].evaluador_id}">
-                <sql:update dataSource="${ds}">
-                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                    SELECT evaluador_id, 'Sustentación a evaluar programada',
-                           CONCAT('La sustentación a evaluar es el ', ?, ' a las ', ?, ' en ', ?, '.'),
-                           'SUSTENTACION_PROGRAMADA',
-                           CONCAT('Correo a ', email, ' (SMTP pendiente)')
-                    FROM anteproyectos a JOIN usuarios u ON u.id = a.evaluador_id
-                    WHERE a.id = ?
+            <sql:transaction dataSource="${ds}">
+                <sql:update>
+                    INSERT INTO sustentacion (anteproyecto_id, fecha, hora, lugar, resultado)
+                    VALUES (?, ?, ?, ?, 'PENDIENTE')
+                    <sql:param value="${ant.id}"/>
                     <sql:param value="${param.fecha}"/>
                     <sql:param value="${param.hora}"/>
                     <sql:param value="${param.lugar}"/>
-                    <sql:param value="${param.id}"/>
                 </sql:update>
-            </c:if>
-            <c:redirect url="sustentacion.jsp?id=${param.id}&exito=programada"/>
+                <%-- Guarda de estado: solo cambia si sigue en Revisión Final. --%>
+                <sql:update var="filasSust">
+                    UPDATE anteproyectos SET estado = 'SUSTENTACIÓN'
+                    WHERE id = ? AND estado = 'REVISIÓN_FINAL'
+                    <sql:param value="${ant.id}"/>
+                </sql:update>
+                <c:if test="${filasSust gt 0}">
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT estudiante_id, 'Sustentación programada',
+                               CONCAT('Tu sustentación fue programada para el ', ?, ' a las ', ?, ' en ', ?, '.'),
+                               'SUSTENTACION_PROGRAMADA',
+                               CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                        FROM anteproyectos a JOIN usuarios u ON u.id = a.estudiante_id
+                        WHERE a.id = ?
+                        <sql:param value="${param.fecha}"/>
+                        <sql:param value="${param.hora}"/>
+                        <sql:param value="${param.lugar}"/>
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT director_id, 'Sustentación de tu dirigido programada',
+                               CONCAT('La sustentación del anteproyecto ', (SELECT titulo FROM anteproyectos WHERE id = ?), ' es el ', ?, ' a las ', ?, '.'),
+                               'SUSTENTACION_PROGRAMADA',
+                               CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                        FROM anteproyectos a JOIN usuarios u ON u.id = a.director_id
+                        WHERE a.id = ?
+                        <sql:param value="${ant.id}"/>
+                        <sql:param value="${param.fecha}"/>
+                        <sql:param value="${param.hora}"/>
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                    <c:if test="${not empty ant.evaluador_id}">
+                        <sql:update>
+                            INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                            SELECT evaluador_id, 'Sustentación a evaluar programada',
+                                   CONCAT('La sustentación a evaluar es el ', ?, ' a las ', ?, ' en ', ?, '.'),
+                                   'SUSTENTACION_PROGRAMADA',
+                                   CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                            FROM anteproyectos a JOIN usuarios u ON u.id = a.evaluador_id
+                            WHERE a.id = ?
+                            <sql:param value="${param.fecha}"/>
+                            <sql:param value="${param.hora}"/>
+                            <sql:param value="${param.lugar}"/>
+                            <sql:param value="${ant.id}"/>
+                        </sql:update>
+                    </c:if>
+                </c:if>
+            </sql:transaction>
+            <c:choose>
+                <c:when test="${filasSust gt 0}">
+                    <c:redirect url="sustentacion.jsp?id=${ant.id}&exito=programada"/>
+                </c:when>
+                <c:otherwise>
+                    <c:set var="error" value="No se pudo programar la sustentación; el estado cambió."/>
+                </c:otherwise>
+            </c:choose>
         </c:otherwise>
     </c:choose>
 </c:if>
@@ -152,34 +171,56 @@
         <c:when test="${empty param.resultado || empty param.sust_id}">
             <c:set var="error" value="Resultado y sustentación son obligatorios."/>
         </c:when>
+        <c:when test="${param.resultado ne 'APROBADO' && param.resultado ne 'RECHAZADO' && param.resultado ne 'PENDIENTE'}">
+            <c:set var="error" value="Resultado no válido."/>
+        </c:when>
+        <c:when test="${empty sust || sust.id ne param.sust_id}">
+            <c:set var="error" value="La sustentación indicada no pertenece a este anteproyecto."/>
+        </c:when>
+        <c:when test="${ant.estado ne 'SUSTENTACIÓN'}">
+            <c:set var="error" value="El trabajo no está en el estado de sustentación."/>
+        </c:when>
         <c:otherwise>
-            <sql:update dataSource="${ds}">
-                UPDATE sustentacion
-                SET resultado = ?, observaciones = ?
-                WHERE id = ?
-                <sql:param value="${param.resultado}"/>
-                <sql:param value="${param.observaciones}"/>
-                <sql:param value="${param.sust_id}"/>
-            </sql:update>
-            <c:if test="${param.resultado eq 'APROBADO'}">
-                <sql:update dataSource="${ds}">
-                    UPDATE anteproyectos SET estado = 'FINALIZADO' WHERE id = ?
-                    <sql:param value="${param.id}"/>
+            <sql:transaction dataSource="${ds}">
+                <sql:update var="filasRes">
+                    UPDATE sustentacion
+                    SET resultado = ?, observaciones = ?
+                    WHERE id = ? AND anteproyecto_id = ?
+                    <sql:param value="${param.resultado}"/>
+                    <sql:param value="${param.observaciones}"/>
+                    <sql:param value="${param.sust_id}"/>
+                    <sql:param value="${ant.id}"/>
                 </sql:update>
-            </c:if>
-            <sql:update dataSource="${ds}">
-                INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                SELECT estudiante_id, 'Resultado de sustentación',
-                       CONCAT('Tu sustentación fue: ', ?, '. Observaciones: ', ?),
-                       'RESULTADO_SUSTENTACION',
-                       CONCAT('Correo a ', email, ' (SMTP pendiente)')
-                FROM anteproyectos a JOIN usuarios u ON u.id = a.estudiante_id
-                WHERE a.id = ?
-                <sql:param value="${param.resultado}"/>
-                <sql:param value="${param.observaciones}"/>
-                <sql:param value="${param.id}"/>
-            </sql:update>
-            <c:redirect url="sustentacion.jsp?id=${param.id}&exito=resultado"/>
+                <c:if test="${param.resultado eq 'APROBADO' && filasRes gt 0}">
+                    <sql:update>
+                        UPDATE anteproyectos SET estado = 'FINALIZADO'
+                        WHERE id = ? AND estado = 'SUSTENTACIÓN'
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                </c:if>
+                <c:if test="${filasRes gt 0}">
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT estudiante_id, 'Resultado de sustentación',
+                               CONCAT('Tu sustentación fue: ', ?, '. Observaciones: ', ?),
+                               'RESULTADO_SUSTENTACION',
+                               CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                        FROM anteproyectos a JOIN usuarios u ON u.id = a.estudiante_id
+                        WHERE a.id = ?
+                        <sql:param value="${param.resultado}"/>
+                        <sql:param value="${param.observaciones}"/>
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                </c:if>
+            </sql:transaction>
+            <c:choose>
+                <c:when test="${filasRes gt 0}">
+                    <c:redirect url="sustentacion.jsp?id=${ant.id}&exito=resultado"/>
+                </c:when>
+                <c:otherwise>
+                    <c:set var="error" value="No se pudo registrar el resultado."/>
+                </c:otherwise>
+            </c:choose>
         </c:otherwise>
     </c:choose>
 </c:if>
@@ -187,7 +228,7 @@
 <%@ include file="common/header.jsp" %>
 
 <h1>Sustentación</h1>
-<p class="subtitulo">Anteproyecto: <c:out value="${ant.ant_titulo}"/> — Estado: <c:set var="est" value="${ant.ant_estado}"/><span class="estado estado-${est}"><%@ include file="common/estado.jsp" %></span></p>
+<p class="subtitulo">Anteproyecto: <c:out value="${ant.titulo}"/> — Estado: <c:set var="est" value="${ant.estado}"/><span class="estado estado-${est}"><%@ include file="common/estado.jsp" %></span></p>
 
 <c:if test="${param.exito eq 'programada'}">
     <div class="aviso aviso-ok">Sustentación programada. Notificaciones enviadas a estudiante, director y evaluador.</div>

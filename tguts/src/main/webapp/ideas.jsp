@@ -145,31 +145,44 @@
                         <c:redirect url="ideas.jsp?error=noexiste"/>
                     </c:when>
                     <c:otherwise>
-                        <%-- La idea queda marcada como seleccionada --%>
-                        <sql:update dataSource="${ds}">
-                            UPDATE ideas SET estado = 'SELECCIONADA' WHERE id = ?
-                            <sql:param value="${param.id}"/>
-                        </sql:update>
-                        <%-- Se crea el anteproyecto del estudiante con su director (RF-13) --%>
-                        <sql:update dataSource="${ds}">
-                            INSERT INTO anteproyectos (estudiante_id, idea_id, titulo, director_id, estado)
-                            VALUES (?, ?, ?, ?, 'BORRADOR')
-                            <sql:param value="${yo.id}"/>
-                            <sql:param value="${qIdeaSel.rows[0].id}"/>
-                            <sql:param value="${qIdeaSel.rows[0].titulo}"/>
-                            <sql:param value="${qIdeaSel.rows[0].docente_id}"/>
-                        </sql:update>
-                        <%-- Notificación al docente (RF-37) --%>
-                        <sql:update dataSource="${ds}">
-                            INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                            SELECT docente_id, 'Idea seleccionada',
-                                   CONCAT('Un estudiante seleccionó la idea: ', titulo, '.'),
-                                   'IDEA_SELECCIONADA',
-                                   CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = ideas.docente_id), ' (SMTP pendiente)')
-                            FROM ideas WHERE id = ?
-                            <sql:param value="${param.id}"/>
-                        </sql:update>
-                        <c:redirect url="anteproyectos.jsp?exito=seleccionada"/>
+                        <%-- Marca la idea como seleccionada y crea el anteproyecto
+                             del estudiante con su director (RF-11, RF-13). Todo en
+                             una transacción y con guarda de estado. --%>
+                        <sql:transaction dataSource="${ds}">
+                            <sql:update var="filasIdea">
+                                UPDATE ideas SET estado = 'SELECCIONADA'
+                                WHERE id = ? AND estado = 'PUBLICADA'
+                                <sql:param value="${param.id}"/>
+                            </sql:update>
+                            <c:if test="${filasIdea gt 0}">
+                                <sql:update>
+                                    INSERT INTO anteproyectos (estudiante_id, idea_id, titulo, director_id, estado)
+                                    VALUES (?, ?, ?, ?, 'BORRADOR')
+                                    <sql:param value="${yo.id}"/>
+                                    <sql:param value="${qIdeaSel.rows[0].id}"/>
+                                    <sql:param value="${qIdeaSel.rows[0].titulo}"/>
+                                    <sql:param value="${qIdeaSel.rows[0].docente_id}"/>
+                                </sql:update>
+                                <%-- Notificación al docente (RF-37) --%>
+                                <sql:update>
+                                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                                    SELECT docente_id, 'Idea seleccionada',
+                                           CONCAT('Un estudiante seleccionó la idea: ', titulo, '.'),
+                                           'IDEA_SELECCIONADA',
+                                           CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = ideas.docente_id), ' (SMTP pendiente)')
+                                    FROM ideas WHERE id = ?
+                                    <sql:param value="${param.id}"/>
+                                </sql:update>
+                            </c:if>
+                        </sql:transaction>
+                        <c:choose>
+                            <c:when test="${filasIdea gt 0}">
+                                <c:redirect url="anteproyectos.jsp?exito=seleccionada"/>
+                            </c:when>
+                            <c:otherwise>
+                                <c:redirect url="ideas.jsp?error=noexiste"/>
+                            </c:otherwise>
+                        </c:choose>
                     </c:otherwise>
                 </c:choose>
             </c:otherwise>

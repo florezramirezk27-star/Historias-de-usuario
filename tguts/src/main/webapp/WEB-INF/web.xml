@@ -11,6 +11,17 @@
         <welcome-file>login.jsp</welcome-file>
     </welcome-file-list>
 
+    <!-- Sesión: 30 min de inactividad, cookie HttpOnly y modo COOKIE.
+         sameSiteCookies=Lax se configura en META-INF/context.xml. La marca
+         Secure se documenta en README: actívala en despliegues 100% HTTPS. -->
+    <session-config>
+        <session-timeout>30</session-timeout>
+        <cookie-config>
+            <http-only>true</http-only>
+        </cookie-config>
+        <tracking-mode>COOKIE</tracking-mode>
+    </session-config>
+
     <error-page>
         <error-code>403</error-code>
         <location>/403.jsp</location>

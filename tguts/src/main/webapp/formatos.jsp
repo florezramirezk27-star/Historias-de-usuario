@@ -132,8 +132,11 @@
                         <c:when test="${empty f.url || f.url eq '#'}">
                             <i>(sin documento)</i>
                         </c:when>
+                        <c:when test="${fn:startsWith(f.url, 'http://') || fn:startsWith(f.url, 'https://')}">
+                            <a class="enlace-doc" href="${fn:escapeXml(f.url)}" target="_blank" rel="noopener">Abrir formato</a>
+                        </c:when>
                         <c:otherwise>
-                            <a class="enlace-doc" href="${f.url}" target="_blank">Abrir formato</a>
+                            <c:out value="${f.url}"/>
                         </c:otherwise>
                     </c:choose>
                 </td>
@@ -148,7 +151,7 @@
                                 <span class="icono-url" aria-hidden="true">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                 </span>
-                                <input type="url" name="url" value="${f.url}"
+                                <input type="url" name="url" value="${fn:escapeXml(f.url)}"
                                        placeholder="https://..." required>
                             </div>
                             <button class="btn btn-mini btn-verde" type="submit"

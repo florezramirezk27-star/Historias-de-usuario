@@ -19,7 +19,7 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 | Base de datos | MySQL / MariaDB vía XAMPP |
 | Conexión | JSTL `<sql:setDataSource>` + pool **HikariCP** + MySQL Connector/J 8.3 |
 | Subida de archivos | Apache Commons FileUpload 1.5 / Commons IO 2.15 |
-| Seguridad | Hash SHA-256 con salt + token CSRF |
+| Seguridad | PBKDF2-HMAC-SHA256 (JDK nativo), token CSRF, sesiones con rotación, guardas por rol |
 
 ---
 
@@ -71,7 +71,9 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 | Evaluador | `evaluador@uts.edu.co` | `evaluador123` |
 | Estudiante | `estudiante@uts.edu.co` | `estudiante123` |
 
-Las contraseñas se almacenan como `SHA-256(password + '|tguts-salt')`.
+Las contraseñas de los datos de prueba ya vienen **hasheadas con PBKDF2-HMAC-SHA256**
+(formato `pbkdf2_sha256$120000$<salB64>$<hashB64>`); en la página de login solo se
+muestran como referencia cuando se corre en local (sin variables `DB_HOST` definidas).
 
 ---
 
@@ -127,19 +129,22 @@ parcia_2jstl/
 └── tguts/
     ├── pom.xml            # Configuración Maven (WAR)
     ├── sql/
-    │   └── db_tgd_uts.sql # Script de base de datos + datos de prueba
+    │   ├── db_tgd_uts.sql        # Script de base de datos + datos de prueba
+    │   └── migracion_seguridad.sql  # Actualiza bases existentes (opcional)
     └── src/
         ├── main/java/
         │   └── edu/uts/PoolInicializador.java   # Pool de conexiones (HikariCP)
         └── main/webapp/
             ├── *.jsp                # Páginas del sistema
-            ├── common/              # Configuración, cabecera, menú, CSRF, guardas
+            ├── common/              # config, seguridad (PBKDF2), CSRF, guardas
             ├── css/style.css        # Estilos
             ├── img/                 # Imágenes
             ├── formatos/            # Formatos oficiales
             └── WEB-INF/
                 ├── web.xml
-                └── lib/             # Dependencias .jar
+                └── META-INF/context.xml   # Cookie SameSite=Lax
+```
+> Las dependencias `.jar` NO se versionan: el WAR las empaqueta Maven desde `pom.xml`.
 ```
 
 ---
@@ -163,9 +168,42 @@ Tablas principales en `db_tgd_uts`:
 
 ## Seguridad
 
-- Contraseñas con **SHA-256 + salt** (`|tguts-salt`).
-- **Token CSRF** en formularios POST (`common/csrf.jsp`, `common/verify_csrf.jsp`).
-- Control de acceso por rol mediante guardas (`common/guard.jsp`).
+Todo la lógica de seguridad vive en **archivos JSP/JSTL** (`common/seguridad.jsp`,
+`common/verify_csrf.jsp`) y configuración declarativa (`web.xml`, `META-INF/context.xml`):
+
+- **Contraseñas:** PBKDF2-HMAC-SHA256 (`pgHash`) con sal aleatoria por usuario y
+  120 000 iteraciones (configurable con la variable de entorno `PBKDF2_ITERATIONS`).
+  Los hashes SHA-256 heredados se migran automáticamente al primer login
+  (`pgNecesitaMigrar` en `common/seguridad.jsp`).
+- **Sesiones:** rotación del identificador al iniciar sesión (`login.jsp`), invalidación
+  al cerrar (`logout.jsp`), timeout de 30 min, cookie `HttpOnly`, `SameSite=Lax` y
+  `tracking-mode=COOKIE` (`web.xml` + `context.xml`).
+- **CSRF:** token estable por sesión en `common/csrf.jsp`; `common/verify_csrf.jsp`
+  valida toda petición POST (funciona también con formularios `multipart`, usa el Map
+  `campos` que prepara `common/config.jsp`).
+- **Autorización por operación:** guarda de sesión (`common/guard.jsp`), guardas de rol,
+  de **propiedad** (el anteproyecto pertenece al usuario) y de **estado** en cada UPDATE
+  (`AND estado = '...'` / `IN (...)`) para impedir transiciones ilegales o reenvíos.
+- **Documentos híbridos (enlace o archivo):** el archivo se valida (extensión, tipo real
+  por *magic bytes*, máximo 20 MB), se almacena con nombre UUID **fuera** del webapp
+  (directorio `uploadDir/`) y se descarga a través de `descargar.jsp`, que verifica
+  sesión, rol y propiedad, y exige una ruta canónica dentro del directorio.
+- **Transacciones:** las operaciones compuestas (cambio de estado + notificación) se
+  agrupan con `<sql:transaction>`.
+- **Base de datos:** índices en estados/notificaciones y `UNIQUE` en entregas/sustentación;
+  columnas `password VARCHAR(255)`.
+
+### Migrar una base existente
+
+Si ya tenías creada la base con el esquema anterior (hashes SHA-256, sin índices),
+ejecuta una sola vez:
+
+```bash
+mysql -uroot < tguts/sql/migracion_seguridad.sql
+```
+
+Ese script amplía la columna `password`, crea los índices/`UNIQUE` y actualiza los hashes
+de los usuarios de prueba. No elimina datos.
 
 ---
 
@@ -219,3 +257,33 @@ Guía detallada: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md).
 
 - Las credenciales de BD se leen de variables de entorno (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) en `src/main/java/edu/uts/PoolInicializador.java`; sin ellas usa XAMPP (`localhost`, `root`, sin contraseña). `common/config.jsp` apunta a ese pool con `dataSource="${applicationScope.ds}"`.
 - El envío real de correos (SMTP) está pendiente; por ahora las notificaciones se registran en la base de datos.
+- Los documentos subidos se guardan en `catalina.base/uploadDir/` (fuera del WAR), por lo que **no se conservan** si se borra el contenedor o el disco efímero de Render. Usa enlaces externos para documentos que deban perdurar, o adjunta un volumen.
+
+---
+
+## Pruebas end-to-end con Docker (local)
+
+```bash
+# 1) Imagen de MySQL con el esquema
+docker network create tguts_net
+docker run -d --name tguts_mysql --network tguts_net \
+  -e MYSQL_ROOT_PASSWORD=rootpw \
+  -v "%CD%\tguts\sql\db_tgd_uts.sql:/docker-entrypoint-initdb.d/01.sql:ro" \
+  mysql:8
+
+# 2) Compilar y desplegar Tomcat 9
+cd tguts && mvn -B clean package
+docker run -d --name tguts_tomcat --network tguts_net -p 18080:8080 \
+  -e DB_HOST=tguts_mysql -e DB_PORT=3306 -e DB_NAME=db_tgd_uts \
+  -e DB_USER=root -e DB_PASSWORD=rootpw \
+  -v "%CD%\target\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" \
+  tomcat:9.0-jdk17-temurin
+
+# 3) Abrir
+#    http://localhost:18080/
+```
+
+Verificado de punta a punta: login, rotación de sesión, CSRF (POST sin token → 403),
+selección de idea, subida de documento (multipart) y descarga protegida, calificación
+(incluida la validación de valores no numéricos/fuera de rango), aprobaciones,
+entrega final, sustentación y cierre del flujo hasta `FINALIZADO`.

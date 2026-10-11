@@ -33,23 +33,25 @@
             <c:set var="error" value="Describe el motivo del trámite."/>
         </c:when>
         <c:otherwise>
-            <sql:update dataSource="${ds}">
-                INSERT INTO tramites (estudiante_id, tipo, detalle) VALUES (?, ?, ?)
-                <sql:param value="${yo.id}"/>
-                <sql:param value="${param.tipo}"/>
-                <sql:param value="${param.detalle}"/>
-            </sql:update>
-            <%-- Notificación a coordinación (RF-37) --%>
-            <sql:update dataSource="${ds}">
-                INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                SELECT u.id, 'Nueva solicitud de trámite',
-                       CONCAT('El estudiante ${yo.nombre} solicitó un trámite de tipo ', ?, '.'),
-                       'TRAMITE_SOLICITADO',
-                       CONCAT('Correo a ', u.email, ' (SMTP pendiente)')
-                FROM usuarios u
-                WHERE u.rol = 'COORDINACION' AND u.activo = 1
-                <sql:param value="${param.tipo}"/>
-            </sql:update>
+            <sql:transaction dataSource="${ds}">
+                <sql:update>
+                    INSERT INTO tramites (estudiante_id, tipo, detalle) VALUES (?, ?, ?)
+                    <sql:param value="${yo.id}"/>
+                    <sql:param value="${param.tipo}"/>
+                    <sql:param value="${param.detalle}"/>
+                </sql:update>
+                <%-- Notificación a coordinación (RF-37) --%>
+                <sql:update>
+                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                    SELECT u.id, 'Nueva solicitud de trámite',
+                           CONCAT('El estudiante ${yo.nombre} solicitó un trámite de tipo ', ?, '.'),
+                           'TRAMITE_SOLICITADO',
+                           CONCAT('Correo a ', u.email, ' (SMTP pendiente)')
+                    FROM usuarios u
+                    WHERE u.rol = 'COORDINACION' AND u.activo = 1
+                    <sql:param value="${param.tipo}"/>
+                </sql:update>
+            </sql:transaction>
             <c:redirect url="tramites.jsp?exito=solicitado"/>
         </c:otherwise>
     </c:choose>
@@ -72,30 +74,41 @@
             <c:redirect url="tramites.jsp?error=sinrespuesta"/>
         </c:when>
         <c:otherwise>
-            <sql:update dataSource="${ds}">
-                UPDATE tramites
-                SET estado = ?, respuesta = ?, resuelto_por = ?
-                WHERE id = ? AND estado = 'PENDIENTE'
-                <sql:param value="${param.resultado}"/>
-                <sql:param value="${param.respuesta}"/>
-                <sql:param value="${yo.id}"/>
-                <sql:param value="${param.id}"/>
-            </sql:update>
-            <%-- Notificación al estudiante (RF-37) --%>
-            <sql:update dataSource="${ds}">
-                INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                SELECT estudiante_id, CONCAT('Trámite ', ?),
-                       CONCAT('Tu solicitud de trámite fue ', LOWER(?), '. Motivo: ', ?),
-                       'TRAMITE_RESPONDIDO',
-                       CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = tramites.estudiante_id),
-                              ' (SMTP pendiente)')
-                FROM tramites WHERE id = ?
-                <sql:param value="${param.resultado}"/>
-                <sql:param value="${param.resultado}"/>
-                <sql:param value="${param.respuesta}"/>
-                <sql:param value="${param.id}"/>
-            </sql:update>
-            <c:redirect url="tramites.jsp?exito=resuelto"/>
+            <sql:transaction dataSource="${ds}">
+                <sql:update var="filasTram">
+                    UPDATE tramites
+                    SET estado = ?, respuesta = ?, resuelto_por = ?
+                    WHERE id = ? AND estado = 'PENDIENTE'
+                    <sql:param value="${param.resultado}"/>
+                    <sql:param value="${param.respuesta}"/>
+                    <sql:param value="${yo.id}"/>
+                    <sql:param value="${param.id}"/>
+                </sql:update>
+                <c:if test="${filasTram gt 0}">
+                    <%-- Notificación al estudiante (RF-37) --%>
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT estudiante_id, CONCAT('Trámite ', ?),
+                               CONCAT('Tu solicitud de trámite fue ', LOWER(?), '. Motivo: ', ?),
+                               'TRAMITE_RESPONDIDO',
+                               CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = tramites.estudiante_id),
+                                      ' (SMTP pendiente)')
+                        FROM tramites WHERE id = ?
+                        <sql:param value="${param.resultado}"/>
+                        <sql:param value="${param.resultado}"/>
+                        <sql:param value="${param.respuesta}"/>
+                        <sql:param value="${param.id}"/>
+                    </sql:update>
+                </c:if>
+            </sql:transaction>
+            <c:choose>
+                <c:when test="${filasTram gt 0}">
+                    <c:redirect url="tramites.jsp?exito=resuelto"/>
+                </c:when>
+                <c:otherwise>
+                    <c:redirect url="tramites.jsp?error=ya_resuelto"/>
+                </c:otherwise>
+            </c:choose>
         </c:otherwise>
     </c:choose>
 </c:if>
@@ -142,6 +155,9 @@
 </c:if>
 <c:if test="${param.error eq 'sinrespuesta'}">
     <div class="aviso aviso-error">Debes escribir la respuesta o motivo de la decisión.</div>
+</c:if>
+<c:if test="${param.error eq 'ya_resuelto'}">
+    <div class="aviso aviso-error">Ese trámite ya había sido resuelto.</div>
 </c:if>
 <c:if test="${not empty error}">
     <div class="aviso aviso-error"><c:out value="${error}"/></div>

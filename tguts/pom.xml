@@ -16,7 +16,8 @@
         <maven.compiler.release>17</maven.compiler.release>
     </properties>
 
-    <!-- Solo librerías (el proyecto no tiene clases .java: todo es JSP + JSTL) -->
+    <!-- Librerías: el WAR las incluye desde aquí (las JSP usan Commons
+         FileUpload para la subida de documentos). -->
     <dependencies>
         <!-- JSTL 1.2 (core, fmt, functions y sql) -->
         <dependency>

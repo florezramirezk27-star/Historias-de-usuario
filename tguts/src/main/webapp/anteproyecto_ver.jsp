@@ -66,6 +66,22 @@
 <c:if test="${pageContext.request.method eq 'POST'}">
     <%@ include file="common/verify_csrf.jsp" %>
 
+    <%-- Validación numérica robusta de la calificación (evita errores si
+         llega un valor no numérico, fuera de rango o vacío). Se usa una
+         operación aritmética para forzar la conversión a Double. --%>
+    <c:set var="calValida" value="true"/>
+    <c:if test="${not empty param.calificacion}">
+        <c:catch var="calError">
+            <c:set var="calNum" value="${param.calificacion * 1.0}"/>
+            <c:if test="${calNum lt 0.0 or calNum gt 5.0}">
+                <c:set var="calValida" value="false"/>
+            </c:if>
+        </c:catch>
+        <c:if test="${not empty calError}">
+            <c:set var="calValida" value="false"/>
+        </c:if>
+    </c:if>
+
     <%-- ---------- DIRECTOR: CALIFICAR (RF-19, RF-35) ---------- --%>
     <c:if test="${param.accion eq 'calificar'}">
         <c:if test="${rol ne 'DIRECTOR'}"><c:redirect url="403.jsp"/></c:if>
@@ -76,7 +92,7 @@
             <c:when test="${empty param.calificacion}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=sincalificacion"/>
             </c:when>
-            <c:when test="${not (param.calificacion ge '0' && param.calificacion le '5')}">
+            <c:when test="${not calValida}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=malcalificacion"/>
             </c:when>
             <c:otherwise>
@@ -203,7 +219,7 @@
             <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
             </c:when>
-            <c:when test="${not empty param.calificacion && not (param.calificacion ge '0' && param.calificacion le '5')}">
+            <c:when test="${not empty param.calificacion && not calValida}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=malcalificacion"/>
             </c:when>
             <c:otherwise>
@@ -325,16 +341,14 @@
     <c:if test="${not empty ant.documento}">
         <p class="dato"><b>Documento:</b>
             <c:choose>
-                <c:when test="${fn:startsWith(ant.documento, 'http')}">
-                    <a class="enlace-doc" href="${ant.documento}" target="_blank">Abrir enlace</a>
-                </c:when>
-                <c:when test="${fn:contains(ant.documento, '/')}">
-                    <c:url value="${ant.documento}" var="docUrl"/>
-                    <a class="enlace-doc" href="${docUrl}" target="_blank">Descargar / ver</a>
+                <c:when test="${fn:startsWith(ant.documento, 'http://') || fn:startsWith(ant.documento, 'https://')}">
+                    <a class="enlace-doc" href="${fn:escapeXml(ant.documento)}" target="_blank" rel="noopener">Abrir enlace</a>
                 </c:when>
                 <c:otherwise>
-                    <c:url value="/uploads/${ant.documento}" var="docUrl"/>
-                    <a class="enlace-doc" href="${docUrl}" target="_blank">Descargar / ver</a>
+                    <c:url value="/descargar.jsp" var="docUrl">
+                        <c:param name="f" value="${ant.documento}"/>
+                    </c:url>
+                    <a class="enlace-doc" href="${docUrl}" target="_blank" rel="noopener">Descargar / ver</a>
                 </c:otherwise>
             </c:choose>
         </p>

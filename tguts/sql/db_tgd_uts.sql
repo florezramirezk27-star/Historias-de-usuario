@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   nombre        VARCHAR(100) NOT NULL,
   email         VARCHAR(120) NOT NULL UNIQUE,
-  password      VARCHAR(64)  NOT NULL,                -- SHA-256
+  password      VARCHAR(255) NOT NULL,               -- PBKDF2-HMAC-SHA256 (o SHA-256 heredado)
   rol           ENUM('ADMIN','COORDINACION','DIRECTOR','EVALUADOR','ESTUDIANTE') NOT NULL,
   codigo        VARCHAR(20)  NULL,                    -- solo estudiantes
   activo        TINYINT(1)   NOT NULL DEFAULT 1,
@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS ideas (
   docente_id    INT NOT NULL,                          -- docente/director que publica
   estado        ENUM('PUBLICADA','SELECCIONADA','CERRADA') NOT NULL DEFAULT 'PUBLICADA',
   creado_en     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ideas_estado (estado),
   CONSTRAINT fk_ideas_docente FOREIGN KEY (docente_id) REFERENCES usuarios(id)
 ) ENGINE=InnoDB;
 
@@ -57,6 +58,7 @@ CREATE TABLE IF NOT EXISTS anteproyectos (
   creado_en             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   actualizado_en        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uq_anteproyecto_estudiante (estudiante_id),
+  KEY idx_ant_estado (estado),
   CONSTRAINT fk_ant_estudiante FOREIGN KEY (estudiante_id) REFERENCES usuarios(id),
   CONSTRAINT fk_ant_idea      FOREIGN KEY (idea_id)      REFERENCES ideas(id) ON DELETE SET NULL,
   CONSTRAINT fk_ant_director  FOREIGN KEY (director_id)  REFERENCES usuarios(id),
@@ -76,6 +78,7 @@ CREATE TABLE IF NOT EXISTS entrega_final (
   observaciones   TEXT NULL,
   revisado_por    INT NULL,                          -- director o coordinación que revisa
   creado_en       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_entrega_ant (anteproyecto_id),
   CONSTRAINT fk_entrega_ant FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id) ON DELETE CASCADE,
   CONSTRAINT fk_entrega_rev FOREIGN KEY (revisado_por) REFERENCES usuarios(id)
 ) ENGINE=InnoDB;
@@ -92,6 +95,7 @@ CREATE TABLE IF NOT EXISTS sustentacion (
   resultado       ENUM('APROBADO','RECHAZADO','PENDIENTE') NOT NULL DEFAULT 'PENDIENTE',
   observaciones   TEXT NULL,
   creado_en       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_sust_ant (anteproyecto_id),
   CONSTRAINT fk_sust_ant FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -122,6 +126,7 @@ CREATE TABLE IF NOT EXISTS notificaciones (
   leido       TINYINT(1) NOT NULL DEFAULT 0,
   correo_log  VARCHAR(400) NULL,                      -- registro del correo (SMTP pendiente)
   creado_en   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_notif_usuario (usuario_id, leido),
   CONSTRAINT fk_notif_usr FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 ) ENGINE=InnoDB;
 
@@ -160,23 +165,28 @@ CREATE TABLE IF NOT EXISTS tramites (
   respuesta     TEXT NULL,
   resuelto_por  INT NULL,
   creado_en     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_tram_estado (estado),
   CONSTRAINT fk_tram_est FOREIGN KEY (estudiante_id) REFERENCES usuarios(id),
   CONSTRAINT fk_tram_res FOREIGN KEY (resuelto_por)  REFERENCES usuarios(id)
 ) ENGINE=InnoDB;
 
 -- =====================================================================
 -- DATOS DE PRUEBA
--- Contraseñas: SHA-256(password + '|tguts-salt')
+-- Contraseñas almacenadas con PBKDF2-HMAC-SHA256 (SecurityUtil), sal
+-- aleatoria por usuario. Correspondencia:
 --   admin123 | coord123 | director123 | evaluador123 | estudiante123
+-- NOTA: estas cuentas son solo para desarrollo/pruebas. En producción deben
+-- eliminarse o cambiarse (la página de login no las muestra si DB_HOST está
+-- definido).
 -- =====================================================================
 
 INSERT INTO usuarios (nombre, email, password, rol, codigo) VALUES
-('Ana Torres',    'admin@uts.edu.co',      SHA2(CONCAT('admin123','|tguts-salt'),256),      'ADMIN',       NULL),
-('Carla Ruiz',    'coord@uts.edu.co',      SHA2(CONCAT('coord123','|tguts-salt'),256),      'COORDINACION',NULL),
-('Carlos Gómez',  'director@uts.edu.co',   SHA2(CONCAT('director123','|tguts-salt'),256),   'DIRECTOR',    NULL),
-('María Rodríguez','evaluador@uts.edu.co', SHA2(CONCAT('evaluador123','|tguts-salt'),256),  'EVALUADOR',   NULL),
-('Juan Pérez',    'estudiante@uts.edu.co', SHA2(CONCAT('estudiante123','|tguts-salt'),256), 'ESTUDIANTE',  '123456'),
-('Laura Gómez',   'estudiante2@uts.edu.co',SHA2(CONCAT('estudiante123','|tguts-salt'),256), 'ESTUDIANTE',  '123457');
+('Ana Torres',    'admin@uts.edu.co',      'pbkdf2_sha256$120000$E2EGc3IMb981N7cna8wBIQ==$GQFqndLwE8h58a+CF85imypcFzfRKRX5YDv1OS+MOP4=',      'ADMIN',       NULL),
+('Carla Ruiz',    'coord@uts.edu.co',      'pbkdf2_sha256$120000$iumAR4qQ07c4wrdd89TcsA==$6CMK7GHdGfXr5dAWCrPwvhbQbDSPIYeoh/i6ww3+2uI=',      'COORDINACION',NULL),
+('Carlos Gómez',  'director@uts.edu.co',   'pbkdf2_sha256$120000$dCGQZrznijppEq9zGWe+Bw==$b249GjAC31/NI/siIJci79dPjOscl0fiwVG2meSsUoU=',   'DIRECTOR',    NULL),
+('María Rodríguez','evaluador@uts.edu.co', 'pbkdf2_sha256$120000$yin9bM6KrJjlqks2fAO8RA==$Psqj3wo3fyecfTkoBUEeB5gB1PCSBaz4l4KuFfxI56A=',  'EVALUADOR',   NULL),
+('Juan Pérez',    'estudiante@uts.edu.co', 'pbkdf2_sha256$120000$3EPIQK8Mq4HmmuDMHXNiGg==$PPuaSGLv13vrHLQWW0PhgUw/iEfdZMN9u2kHXObiS9k=', 'ESTUDIANTE',  '123456'),
+('Laura Gómez',   'estudiante2@uts.edu.co','pbkdf2_sha256$120000$MPK0aO7CMnbZA0qKgSnYeg==$na5B9spBSVUYcMn4mrfOLqfwREikMYSGT9KKnbqnbow=', 'ESTUDIANTE',  '123457');
 
 INSERT INTO ideas (titulo, descripcion, docente_id, estado) VALUES
 ('Sistema de gestión de inventarios', 'Sistema web para administrar productos, entradas y salidas de inventario.', 3, 'PUBLICADA'),

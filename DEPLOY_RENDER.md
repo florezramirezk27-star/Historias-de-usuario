@@ -49,6 +49,10 @@ Si necesitas **reimportar** el esquema (por ejemplo tras vaciar la base), ejecut
 `tguts/sql/db_tgd_uts.sql` omitiendo las líneas `CREATE DATABASE ...` y `USE db_tgd_uts;`
 (con cualquier cliente MySQL apuntando a la base del addon).
 
+> Si la base **ya existía** con el esquema anterior (contraseñas SHA-256, sin índices),
+> ejecuta una sola vez `tguts/sql/migracion_seguridad.sql` adaptado a la base del addon:
+> migra los hashes a PBKDF2, amplía `password` a `VARCHAR(255)` y crea los índices.
+
 ---
 
 ## Paso 1 — Subir el proyecto a GitHub
@@ -109,8 +113,10 @@ git push
   Tomcat escucha en 8080, por eso se fija `PORT=8080`.
 - **Primer acceso lento** en plan free: el servicio se duerme y tarda ~30–60 s en despertar.
 - **Error 500 en el login:** revisa `DB_HOST`, `DB_USER` y `DB_PASSWORD`.
-- **Los archivos subidos** (documentos) se pierden en cada deploy porque el disco del
-  Web Service es efímero.
+- **Los archivos subidos** (documentos) se guardan en `catalina.base/uploadDir/` (fuera del
+  WAR) y se pierden en cada deploy porque el disco del Web Service es efímero. Para
+  documentos que deban perdurar usa la opción de **enlace externo (URL)** o añade un volumen
+  persistente. La descarga siempre va por `descargar.jsp` (sesión + rol + propiedad).
 - **SSL:** la conexión usa `useSSL=false`. Si Clever Cloud lo exigiera, cambia la URL en
   `src/main/java/edu/uts/PoolInicializador.java` a `useSSL=true`.
 - **Warning "Invalid shutdown command [HEAD / HTTP/1.1]":** no es un error. Son las sondas

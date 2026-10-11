@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  context.xml - Configuración específica de Tomcat 9 (no forma parte del WAR
+  estándar, pero Tomcat la reconoce en META-INF/).
+
+  sameSiteCookies="lax": la cookie de sesión JSESSIONID no se envía en
+  peticiones cruzadas de terceros (mitiga CSRF y fugas de sesión), sin romper
+  la navegación normal entre pestañas del mismo sitio.
+-->
+<Context>
+    <CookieProcessor className="org.apache.tomcat.util.http.Rfc6265CookieProcessor"
+                     sameSiteCookies="lax"/>
+</Context>

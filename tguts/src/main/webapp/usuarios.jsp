@@ -25,6 +25,7 @@
             <c:when test="${empty param.email}"><c:set var="error" value="El correo es obligatorio."/></c:when>
             <c:when test="${not fn:contains(param.email, '@')}"><c:set var="error" value="El correo no es válido (debe contener @)."/></c:when>
             <c:when test="${empty param.password}"><c:set var="error" value="La contraseña es obligatoria."/></c:when>
+            <c:when test="${fn:length(param.password) lt 8}"><c:set var="error" value="La contraseña debe tener al menos 8 caracteres."/></c:when>
             <c:when test="${empty param.rol}"><c:set var="error" value="Selecciona el rol del usuario."/></c:when>
             <c:when test="${param.rol eq 'ESTUDIANTE' && empty param.codigo}"><c:set var="error" value="El código del estudiante es obligatorio."/></c:when>
         </c:choose>
@@ -39,12 +40,14 @@
                     <c:set var="error" value="Ya existe un usuario con ese correo electrónico."/>
                 </c:when>
                 <c:otherwise>
+                    <%-- Hash PBKDF2 generado en el servidor (no en la base de datos) --%>
+                    <% request.setAttribute("hashPwd", pgHash(request.getParameter("password"))); %>
                     <sql:update dataSource="${ds}">
                         INSERT INTO usuarios (nombre, email, password, rol, codigo)
-                        VALUES (?, ?, SHA2(CONCAT(?, '|tguts-salt'), 256), ?, NULLIF(?, ''))
+                        VALUES (?, ?, ?, ?, NULLIF(?, ''))
                         <sql:param value="${param.nombre}"/>
                         <sql:param value="${param.email}"/>
-                        <sql:param value="${param.password}"/>
+                        <sql:param value="${hashPwd}"/>
                         <sql:param value="${param.rol}"/>
                         <sql:param value="${param.codigo}"/>
                     </sql:update>
@@ -63,6 +66,7 @@
             <c:when test="${empty param.nombre}"><c:set var="error" value="El nombre es obligatorio."/></c:when>
             <c:when test="${empty param.email}"><c:set var="error" value="El correo es obligatorio."/></c:when>
             <c:when test="${not fn:contains(param.email, '@')}"><c:set var="error" value="El correo no es válido (debe contener @)."/></c:when>
+            <c:when test="${not empty param.password && fn:length(param.password) lt 8}"><c:set var="error" value="La contraseña debe tener al menos 8 caracteres."/></c:when>
             <c:when test="${empty param.rol}"><c:set var="error" value="Selecciona el rol del usuario."/></c:when>
             <c:when test="${param.rol eq 'ESTUDIANTE' && empty param.codigo}"><c:set var="error" value="El código del estudiante es obligatorio."/></c:when>
         </c:choose>
@@ -81,16 +85,17 @@
                     <c:choose>
                         <%-- Si escribió contraseña nueva, se actualiza; si no, se conserva --%>
                         <c:when test="${not empty param.password}">
+                            <% request.setAttribute("hashPwd", pgHash(request.getParameter("password"))); %>
                             <sql:update dataSource="${ds}">
                                 UPDATE usuarios
                                 SET nombre = ?, email = ?, rol = ?, codigo = NULLIF(?, ''),
-                                    password = SHA2(CONCAT(?, '|tguts-salt'), 256)
+                                    password = ?
                                 WHERE id = ?
                                 <sql:param value="${param.nombre}"/>
                                 <sql:param value="${param.email}"/>
                                 <sql:param value="${param.rol}"/>
                                 <sql:param value="${param.codigo}"/>
-                                <sql:param value="${param.password}"/>
+                                <sql:param value="${hashPwd}"/>
                                 <sql:param value="${param.id}"/>
                             </sql:update>
                         </c:when>

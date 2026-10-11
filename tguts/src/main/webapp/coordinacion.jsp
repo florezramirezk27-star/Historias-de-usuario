@@ -39,6 +39,13 @@
         <c:set var="evalOK" value="${qValEval.rowCount gt 0}"/>
     </c:if>
 
+    <%-- Validación: el anteproyecto debe pertenecer al estudiante indicado --%>
+    <sql:query dataSource="${ds}" var="qPertenece">
+        SELECT 1 FROM anteproyectos WHERE id = ? AND estudiante_id = ?
+        <sql:param value="${param.anteproyecto_id}"/>
+        <sql:param value="${param.estudiante_id}"/>
+    </sql:query>
+
     <c:choose>
         <c:when test="${empty param.anteproyecto_id || empty param.estudiante_id}">
             <c:redirect url="coordinacion.jsp"/>
@@ -52,43 +59,49 @@
         <c:when test="${not empty param.evaluador && not evalOK}">
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=evaluador_invalido"/>
         </c:when>
+        <c:when test="${qPertenece.rowCount eq 0}">
+            <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=no_pertenece"/>
+        </c:when>
         <c:otherwise>
-            <sql:update dataSource="${ds}">
-                UPDATE anteproyectos
-                SET director_id = NULLIF(?, ''), evaluador_id = NULLIF(?, '')
-                WHERE id = ?
-                <sql:param value="${param.director}"/>
-                <sql:param value="${param.evaluador}"/>
-                <sql:param value="${param.anteproyecto_id}"/>
-            </sql:update>
-
-            <%-- Notificación al evaluador asignado (RF-37) --%>
-            <c:if test="${not empty param.evaluador}">
-                <sql:update dataSource="${ds}">
-                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                    SELECT ?, 'Eres el evaluador de este anteproyecto',
-                           'Coordinación te asignó como evaluador del anteproyecto pendiente.',
-                           'EVALUADOR_ASIGNADO',
-                           CONCAT('Correo a ', email, ' (SMTP pendiente)')
-                    FROM usuarios WHERE id = ?
-                    <sql:param value="${param.evaluador}"/>
-                    <sql:param value="${param.evaluador}"/>
-                </sql:update>
-            </c:if>
-
-            <%-- Notificación al director asignado (RF-37) --%>
-            <c:if test="${not empty param.director}">
-                <sql:update dataSource="${ds}">
-                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                    SELECT ?, 'Nuevo anteproyecto asignado',
-                           'Coordinación te asignó como director de un anteproyecto.',
-                           'DIRECTOR_ASIGNADO',
-                           CONCAT('Correo a ', email, ' (SMTP pendiente)')
-                    FROM usuarios WHERE id = ?
+            <sql:transaction dataSource="${ds}">
+                <sql:update>
+                    UPDATE anteproyectos
+                    SET director_id = NULLIF(?, ''), evaluador_id = NULLIF(?, '')
+                    WHERE id = ? AND estudiante_id = ?
                     <sql:param value="${param.director}"/>
-                    <sql:param value="${param.director}"/>
+                    <sql:param value="${param.evaluador}"/>
+                    <sql:param value="${param.anteproyecto_id}"/>
+                    <sql:param value="${param.estudiante_id}"/>
                 </sql:update>
-            </c:if>
+
+                <%-- Notificación al evaluador asignado (RF-37) --%>
+                <c:if test="${not empty param.evaluador}">
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT ?, 'Eres el evaluador de este anteproyecto',
+                               'Coordinación te asignó como evaluador del anteproyecto pendiente.',
+                               'EVALUADOR_ASIGNADO',
+                               CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                        FROM usuarios WHERE id = ?
+                        <sql:param value="${param.evaluador}"/>
+                        <sql:param value="${param.evaluador}"/>
+                    </sql:update>
+                </c:if>
+
+                <%-- Notificación al director asignado (RF-37) --%>
+                <c:if test="${not empty param.director}">
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT ?, 'Nuevo anteproyecto asignado',
+                               'Coordinación te asignó como director de un anteproyecto.',
+                               'DIRECTOR_ASIGNADO',
+                               CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                        FROM usuarios WHERE id = ?
+                        <sql:param value="${param.director}"/>
+                        <sql:param value="${param.director}"/>
+                    </sql:update>
+                </c:if>
+            </sql:transaction>
 
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&exito=asignado"/>
         </c:otherwise>
@@ -173,6 +186,9 @@
 </c:if>
 <c:if test="${param.error eq 'evaluador_invalido'}">
     <div class="aviso aviso-error">El usuario seleccionado no es un Evaluador válido o está inactivo.</div>
+</c:if>
+<c:if test="${param.error eq 'no_pertenece'}">
+    <div class="aviso aviso-error">El anteproyecto indicado no pertenece a ese estudiante.</div>
 </c:if>
 
 <c:choose>
