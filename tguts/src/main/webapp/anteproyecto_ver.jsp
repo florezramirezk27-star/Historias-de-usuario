@@ -2,7 +2,7 @@
      anteproyecto_ver.jsp - Detalle y acciones del anteproyecto
        * Estudiante: consulta (RF-15, RF-16, RF-34, RF-36)
        * Director: calificar, aprobar, rechazar (RF-18 a RF-20, RF-35)
-       * Evaluador: revisar y aprobar (RF-22, RF-23, RF-24)
+       * Evaluador: calificar, revisar y aprobar (RF-22, RF-23, RF-24, RF-35)
        * Coordinación/administrador: solo consulta (RF-28)
      ========================================================== --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
@@ -131,6 +131,55 @@
         </c:choose>
     </c:if>
 
+    <%-- ---------- EVALUADOR: CALIFICAR (RF-22, RF-35) ---------- --%>
+    <c:if test="${param.accion eq 'calificar_eval'}">
+        <c:if test="${rol ne 'EVALUADOR'}"><c:redirect url="403.jsp"/></c:if>
+        <c:choose>
+            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
+            </c:when>
+            <c:when test="${empty param.calificacion}">
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=sincalificacion"/>
+            </c:when>
+            <c:when test="${not calValida}">
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=malcalificacion"/>
+            </c:when>
+            <c:otherwise>
+                <%-- Se almacena la calificación del evaluador en el anteproyecto --%>
+                <sql:update dataSource="${ds}">
+                    UPDATE anteproyectos
+                    SET calificacion_evaluador = ?, observacion_evaluador = ?
+                    WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
+                    <sql:param value="${param.calificacion}"/>
+                    <sql:param value="${param.observacion}"/>
+                    <sql:param value="${ant.id}"/>
+                    <sql:param value="${yo.id}"/>
+                </sql:update>
+                <%-- Y en el historial de calificaciones (RF-35) --%>
+                <sql:update dataSource="${ds}">
+                    INSERT INTO calificaciones (anteproyecto_id, usuario_id, rol_calificador, calificacion, observacion)
+                    VALUES (?, ?, 'EVALUADOR', ?, ?)
+                    <sql:param value="${ant.id}"/>
+                    <sql:param value="${yo.id}"/>
+                    <sql:param value="${param.calificacion}"/>
+                    <sql:param value="${param.observacion}"/>
+                </sql:update>
+                <%-- Notificación al estudiante (RF-37) --%>
+                <sql:update dataSource="${ds}">
+                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                    SELECT estudiante_id, 'Anteproyecto calificado',
+                           CONCAT('Tu anteproyecto fue calificado por el evaluador: ', titulo, '.'),
+                           'ANTEPROYECTO_CALIFICADO',
+                           CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = anteproyectos.estudiante_id),
+                                  ' (SMTP pendiente)')
+                    FROM anteproyectos WHERE id = ?
+                    <sql:param value="${ant.id}"/>
+                </sql:update>
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=calificado_eval"/>
+            </c:otherwise>
+        </c:choose>
+    </c:if>
+
     <%-- ---------- DIRECTOR: APROBAR PARA EL EVALUADOR (RF-20) ---------- --%>
     <c:if test="${param.accion eq 'aprobar'}">
         <c:if test="${rol ne 'DIRECTOR'}"><c:redirect url="403.jsp"/></c:if>
@@ -219,43 +268,18 @@
             <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
             </c:when>
-            <c:when test="${not empty param.calificacion && not calValida}">
-                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=malcalificacion"/>
+            <%-- Igual que el director: primero hay que calificar (RF-22 → RF-23) --%>
+            <c:when test="${empty ant['calificacion_evaluador']}">
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=evalnocalifica"/>
             </c:when>
             <c:otherwise>
-                <c:choose>
-                    <%-- Con calificación del evaluador --%>
-                    <c:when test="${not empty param.calificacion}">
-                        <sql:update dataSource="${ds}">
-                            UPDATE anteproyectos
-                            SET estado = 'APROBADO_EVALUADOR',
-                                calificacion_evaluador = ?, observacion_evaluador = ?
-                            WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
-                            <sql:param value="${param.calificacion}"/>
-                            <sql:param value="${param.observacion}"/>
-                            <sql:param value="${ant.id}"/>
-                            <sql:param value="${yo.id}"/>
-                        </sql:update>
-                        <sql:update dataSource="${ds}">
-                            INSERT INTO calificaciones (anteproyecto_id, usuario_id, rol_calificador, calificacion, observacion)
-                            VALUES (?, ?, 'EVALUADOR', ?, ?)
-                            <sql:param value="${ant.id}"/>
-                            <sql:param value="${yo.id}"/>
-                            <sql:param value="${param.calificacion}"/>
-                            <sql:param value="${param.observacion}"/>
-                        </sql:update>
-                    </c:when>
-                    <%-- Solo aprobación --%>
-                    <c:otherwise>
-                        <sql:update dataSource="${ds}">
-                            UPDATE anteproyectos
-                            SET estado = 'APROBADO_EVALUADOR'
-                            WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
-                            <sql:param value="${ant.id}"/>
-                            <sql:param value="${yo.id}"/>
-                        </sql:update>
-                    </c:otherwise>
-                </c:choose>
+                <sql:update dataSource="${ds}">
+                    UPDATE anteproyectos
+                    SET estado = 'APROBADO_EVALUADOR'
+                    WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
+                    <sql:param value="${ant.id}"/>
+                    <sql:param value="${yo.id}"/>
+                </sql:update>
 
                 <%-- Notificación al estudiante (RF-37) --%>
                 <sql:update dataSource="${ds}">
@@ -309,6 +333,9 @@
 <c:if test="${param.exito eq 'evaluado'}">
     <div class="aviso aviso-ok">Anteproyecto aprobado por el evaluador. Estudiante y coordinación fueron notificados (RF-23, RF-24).</div>
 </c:if>
+<c:if test="${param.exito eq 'calificado_eval'}">
+    <div class="aviso aviso-ok">Calificación del evaluador guardada (RF-22, RF-35).</div>
+</c:if>
 <c:if test="${param.error eq 'sincalificacion'}">
     <div class="aviso aviso-error">Debes ingresar una calificación (0 a 5) antes de continuar.</div>
 </c:if>
@@ -317,6 +344,9 @@
 </c:if>
 <c:if test="${param.error eq 'nocalifica'}">
     <div class="aviso aviso-error">Primero califica el anteproyecto para poder aprobarlo (RF-19 → RF-20).</div>
+</c:if>
+<c:if test="${param.error eq 'evalnocalifica'}">
+    <div class="aviso aviso-error">Primero califica el anteproyecto para poder aprobarlo como evaluador (RF-22 → RF-23).</div>
 </c:if>
 <c:if test="${param.error eq 'estado'}">
     <div class="aviso aviso-error">La operación no está permitida en el estado actual del anteproyecto.</div>
@@ -446,18 +476,30 @@
 <c:if test="${rol eq 'EVALUADOR' && ant.estado eq 'APROBADO_DIRECTOR'}">
     <div class="panel">
         <h2 style="margin-top:0">Evaluación del anteproyecto (RF-22)</h2>
+
+        <h3>1. Calificar (RF-22)</h3>
         <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}">
             <input type="hidden" name="csrf_token" value="${csrfToken}">
-            <input type="hidden" name="accion" value="evaluar">
-            <label for="califEval">Calificación (opcional, 0 a 5)</label>
-            <input type="number" id="califEval" name="calificacion" min="0" max="5" step="0.1">
+            <input type="hidden" name="accion" value="calificar_eval">
+            <label for="califEval">Calificación (0 a 5)</label>
+            <input type="number" id="califEval" name="calificacion" min="0" max="5" step="0.1"
+                   required value="${ant['calificacion_evaluador']}">
             <label for="obsEval">Observaciones</label>
-            <textarea id="obsEval" name="observacion" maxlength="1000"></textarea>
-            <button class="btn btn-verde" type="submit"
-                    onclick="return confirm('¿Aprobar el anteproyecto? Se notificará al estudiante y a coordinación.')">
-                Aprobar anteproyecto (RF-23)
-            </button>
+            <textarea id="obsEval" name="observacion" maxlength="1000"
+                      placeholder="Comentarios sobre el anteproyecto"><c:out value="${ant['observacion_evaluador']}"/></textarea>
+            <button class="btn" type="submit">Guardar calificación</button>
         </form>
+
+        <h3>2. Decisión</h3>
+        <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}"
+              onsubmit="return confirm('¿Aprobar el anteproyecto? Se notificará al estudiante y a coordinación.')">
+            <input type="hidden" name="csrf_token" value="${csrfToken}">
+            <input type="hidden" name="accion" value="evaluar">
+            <button class="btn btn-verde" type="submit">Aprobar anteproyecto (RF-23)</button>
+        </form>
+        <p class="dato" style="margin-top:8px">
+            <i>Primero debes guardar la calificación del evaluador para poder aprobar el anteproyecto.</i>
+        </p>
     </div>
 </c:if>
 
