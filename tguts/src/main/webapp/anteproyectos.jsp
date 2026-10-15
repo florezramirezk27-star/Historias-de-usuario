@@ -125,6 +125,10 @@
                         </td>
                         <td>
                             <a class="btn btn-mini btn-gris" href="anteproyecto_ver.jsp?id=${a.id}">Ver detalle</a>
+                            <%-- Acción del evaluador: calificar/aprobar (RF-22, RF-23) --%>
+                            <c:if test="${rol eq 'EVALUADOR' && (a.estado eq 'APROBADO_DIRECTOR' || a.estado eq 'ENVIADO')}">
+                                <a class="btn btn-mini" href="anteproyecto_ver.jsp?id=${a.id}">Calificar</a>
+                            </c:if>
                             <c:if test="${rol eq 'ESTUDIANTE' && (a.estado eq 'BORRADOR' || a.estado eq 'RECHAZADO')}">
                                 <a class="btn btn-mini" href="anteproyecto_form.jsp?id=${a.id}">
                                     <c:choose>

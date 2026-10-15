@@ -135,7 +135,9 @@
     <c:if test="${param.accion eq 'calificar_eval'}">
         <c:if test="${rol ne 'EVALUADOR'}"><c:redirect url="403.jsp"/></c:if>
         <c:choose>
-            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
+            <%-- El evaluador puede calificar en cuanto el anteproyecto le fue
+                 asignado (ENVIADO o ya aprobado por el director). --%>
+            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR' && ant.estado ne 'ENVIADO'}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
             </c:when>
             <c:when test="${empty param.calificacion}">
@@ -149,7 +151,7 @@
                 <sql:update dataSource="${ds}">
                     UPDATE anteproyectos
                     SET calificacion_evaluador = ?, observacion_evaluador = ?
-                    WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
+                    WHERE id = ? AND evaluador_id = ? AND estado IN ('ENVIADO','APROBADO_DIRECTOR')
                     <sql:param value="${param.calificacion}"/>
                     <sql:param value="${param.observacion}"/>
                     <sql:param value="${ant.id}"/>
@@ -473,7 +475,9 @@
 </c:if>
 
 <%-- ================= ACCIONES DEL EVALUADOR (RF-22 a RF-24) ================= --%>
-<c:if test="${rol eq 'EVALUADOR' && ant.estado eq 'APROBADO_DIRECTOR'}">
+<%-- El evaluador ve sus acciones una vez que el anteproyecto le fue asignado:
+     puede calificar desde ENVIADO y aprobar cuando ya está APROBADO_DIRECTOR. --%>
+<c:if test="${rol eq 'EVALUADOR' && (ant.estado eq 'APROBADO_DIRECTOR' || ant.estado eq 'ENVIADO')}">
     <div class="panel">
         <h2 style="margin-top:0">Evaluación del anteproyecto (RF-22)</h2>
 
@@ -490,16 +494,27 @@
             <button class="btn" type="submit">Guardar calificación</button>
         </form>
 
-        <h3>2. Decisión</h3>
-        <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}"
-              onsubmit="return confirm('¿Aprobar el anteproyecto? Se notificará al estudiante y a coordinación.')">
-            <input type="hidden" name="csrf_token" value="${csrfToken}">
-            <input type="hidden" name="accion" value="evaluar">
-            <button class="btn btn-verde" type="submit">Aprobar anteproyecto (RF-23)</button>
-        </form>
-        <p class="dato" style="margin-top:8px">
-            <i>Primero debes guardar la calificación del evaluador para poder aprobar el anteproyecto.</i>
-        </p>
+        <c:choose>
+            <%-- Ya aprobado por el director: se habilita la aprobación del evaluador --%>
+            <c:when test="${ant.estado eq 'APROBADO_DIRECTOR'}">
+                <h3>2. Decisión</h3>
+                <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}"
+                      onsubmit="return confirm('¿Aprobar el anteproyecto? Se notificará al estudiante y a coordinación.')">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    <input type="hidden" name="accion" value="evaluar">
+                    <button class="btn btn-verde" type="submit">Aprobar anteproyecto (RF-23)</button>
+                </form>
+                <p class="dato" style="margin-top:8px">
+                    <i>Primero debes guardar la calificación del evaluador para poder aprobar el anteproyecto.</i>
+                </p>
+            </c:when>
+            <c:otherwise>
+                <p class="dato" style="margin-top:8px">
+                    <i>El anteproyecto aún no ha sido aprobado por el director. Puedes dejar registrada tu
+                       calificación; la opción de aprobar se habilita cuando el director lo apruebe.</i>
+                </p>
+            </c:otherwise>
+        </c:choose>
     </div>
 </c:if>
 
