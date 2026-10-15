@@ -148,16 +148,14 @@
             <button class="btn" type="submit">Iniciar sesión</button>
         </form>
 
-        <c:if test="${applicationScope.mostrarCredenciales}">
-            <div class="credenciales">
-                <b>Cuentas de prueba (entorno local)</b><br>
-                Admin: admin@uts.edu.co / admin123<br>
-                Coordinación: coord@uts.edu.co / coord123<br>
-                Director: director@uts.edu.co / director123<br>
-                Evaluador: evaluador@uts.edu.co / evaluador123<br>
-                Estudiante: estudiante@uts.edu.co / estudiante123
-            </div>
-        </c:if>
+        <div class="credenciales">
+            <b>Cuentas de prueba</b><br>
+            Admin: admin@uts.edu.co / admin123<br>
+            Coordinación: coord@uts.edu.co / coord123<br>
+            Director: director@uts.edu.co / director123<br>
+            Evaluador: evaluador@uts.edu.co / evaluador123<br>
+            Estudiante: estudiante@uts.edu.co / estudiante123
+        </div>
     </div>
 </div>
 </body>
