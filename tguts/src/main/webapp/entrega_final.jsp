@@ -66,9 +66,42 @@
 </sql:query>
 <c:set var="entrega" value="${qEntrega.rowCount gt 0 ? qEntrega.rows[0] : null}"/>
 
-<%-- Estudiante solo puede acceder si el anteproyecto está en APROBADO_EVALUADOR y no hay entrega --%>
-<c:if test="${rol eq 'ESTUDIANTE' && (ant.estado ne 'APROBADO_EVALUADOR' || not empty entrega)}">
+<%-- El estudiante puede crear la primera entrega o reemplazar una entrega observada. --%>
+<c:if test="${rol eq 'ESTUDIANTE' && not ((ant.estado eq 'APROBADO_EVALUADOR' && empty entrega) || (ant.estado eq 'ENTREGA_DOCUMENTO_FINAL' && not empty entrega && entrega.estado eq 'OBSERVADO'))}">
     <c:redirect url="anteproyectos.jsp"/>
+</c:if>
+
+<%-- Procesar la corrección de un documento observado. Conserva el mismo
+     registro de entrega y lo devuelve a revisión. --%>
+<c:if test="${pageContext.request.method eq 'POST' && campos.accion eq 'corregir'}">
+    <%@ include file="common/verify_csrf.jsp" %>
+    <c:if test="${rol ne 'ESTUDIANTE'}"><c:redirect url="403.jsp"/></c:if>
+    <c:set var="docCorregido" value="${campos.documento}"/>
+    <c:if test="${not empty requestScope.archivo_subido}"><c:set var="docCorregido" value="${requestScope.archivo_subido}"/></c:if>
+    <c:choose>
+        <c:when test="${not empty requestScope.archivo_error}"><c:set var="error" value="${requestScope.archivo_error}"/></c:when>
+        <c:when test="${ant.estado ne 'ENTREGA_DOCUMENTO_FINAL' || empty entrega || entrega.estado ne 'OBSERVADO'}"><c:set var="error" value="No hay una entrega observada disponible para corregir."/></c:when>
+        <c:when test="${empty campos.titulo || empty docCorregido}"><c:set var="error" value="El título y el documento corregido son obligatorios."/></c:when>
+        <c:when test="${empty requestScope.archivo_subido && not (fn:startsWith(campos.documento, 'http://') || fn:startsWith(campos.documento, 'https://'))}"><c:set var="error" value="La URL debe comenzar por http:// o https://."/></c:when>
+        <c:otherwise>
+            <sql:transaction dataSource="${ds}">
+                <sql:update var="filasCorregidas">
+                    UPDATE entrega_final SET titulo = ?, documento = ?, estado = 'ENTREGADO', observaciones = NULL, revisado_por = NULL, fecha_entrega = CURRENT_TIMESTAMP
+                    WHERE id = ? AND anteproyecto_id = ? AND estado = 'OBSERVADO'
+                    <sql:param value="${campos.titulo}"/><sql:param value="${docCorregido}"/><sql:param value="${entrega.id}"/><sql:param value="${ant.id}"/>
+                </sql:update>
+                <c:if test="${filasCorregidas gt 0}">
+                    <sql:update>
+                        INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                        SELECT director_id, 'Documento final corregido', CONCAT('El estudiante cargó una corrección: ', titulo, '.'), 'ENTREGA_FINAL_CORREGIDA', CONCAT('Correo a ', email, ' (SMTP pendiente)')
+                        FROM anteproyectos a JOIN usuarios u ON u.id = a.director_id WHERE a.id = ?
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                </c:if>
+            </sql:transaction>
+            <c:choose><c:when test="${filasCorregidas gt 0}"><c:redirect url="entrega_final.jsp?id=${ant.id}&exito=corregido"/></c:when><c:otherwise><c:set var="error" value="No se pudo registrar la corrección."/></c:otherwise></c:choose>
+        </c:otherwise>
+    </c:choose>
 </c:if>
 
 <%-- Procesar POST crear entrega (estudiante registra archivo o URL) --%>
@@ -206,6 +239,9 @@
 <c:if test="${param.exito eq 'revisado'}">
     <div class="aviso aviso-ok">Revisión registrada. El estudiante ha sido notificado.</div>
 </c:if>
+<c:if test="${param.exito eq 'corregido'}">
+    <div class="aviso aviso-ok">Corrección enviada al director para una nueva revisión.</div>
+</c:if>
 <c:if test="${not empty error}">
     <div class="aviso aviso-error"><c:out value="${error}"/></div>
 </c:if>
@@ -268,6 +304,19 @@
                 <p class="dato"><b>Observaciones:</b> <c:out value="${entrega.observaciones}"/></p>
             </c:if>
         </div>
+
+        <c:if test="${rol eq 'ESTUDIANTE' && entrega.estado eq 'OBSERVADO' && ant.estado eq 'ENTREGA_DOCUMENTO_FINAL'}">
+            <div class="panel">
+                <h2 style="margin-top:0">Corregir y reenviar documento</h2>
+                <form method="post" action="entrega_final.jsp?id=${param.id}" enctype="multipart/form-data">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}"><input type="hidden" name="accion" value="corregir">
+                    <label for="tituloCorreccion">Título</label><input type="text" id="tituloCorreccion" name="titulo" required maxlength="200" value="${fn:escapeXml(entrega.titulo)}">
+                    <label for="archivoCorreccion">Archivo corregido</label><input type="file" id="archivoCorreccion" name="archivo" accept=".pdf,.doc,.docx,.odt,.ppt,.pptx">
+                    <label for="documentoCorreccion">… o URL del documento corregido</label><input type="url" id="documentoCorreccion" name="documento" placeholder="https://drive.google.com/...">
+                    <button class="btn btn-verde" type="submit">Enviar corrección</button>
+                </form>
+            </div>
+        </c:if>
 
         <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION' || rol eq 'DIRECTOR'}">
             <div class="panel">

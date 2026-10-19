@@ -39,7 +39,9 @@
     </c:when>
     <c:when test="${rol eq 'EVALUADOR'}">
         <sql:query dataSource="${ds}" var="qLista">
-            SELECT * FROM anteproyectos WHERE evaluador_id = ? ORDER BY id DESC
+            SELECT * FROM anteproyectos
+            WHERE evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
+            ORDER BY id DESC
             <sql:param value="${yo.id}"/>
         </sql:query>
     </c:when>
@@ -126,7 +128,7 @@
                         <td>
                             <a class="btn btn-mini btn-gris" href="anteproyecto_ver.jsp?id=${a.id}">Ver detalle</a>
                             <%-- Acción del evaluador: calificar/aprobar (RF-22, RF-23) --%>
-                            <c:if test="${rol eq 'EVALUADOR' && (a.estado eq 'APROBADO_DIRECTOR' || a.estado eq 'ENVIADO')}">
+                            <c:if test="${rol eq 'EVALUADOR' && a.estado eq 'APROBADO_DIRECTOR'}">
                                 <a class="btn btn-mini" href="anteproyecto_ver.jsp?id=${a.id}">Calificar</a>
                             </c:if>
                             <c:if test="${rol eq 'ESTUDIANTE' && (a.estado eq 'BORRADOR' || a.estado eq 'RECHAZADO')}">
@@ -136,6 +138,14 @@
                                         <c:otherwise>Completar y subir documento</c:otherwise>
                                     </c:choose>
                                 </a>
+                            </c:if>
+                            <c:if test="${rol eq 'ESTUDIANTE' && (a.estado eq 'BORRADOR' || a.estado eq 'RECHAZADO')}">
+                                <form method="post" action="anteproyecto_ver.jsp?id=${a.id}" style="display:inline"
+                                      onsubmit="return confirm('Eliminar este anteproyecto? Esta accion no se puede deshacer.')">
+                                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                                    <input type="hidden" name="accion" value="eliminar_anteproyecto">
+                                    <button class="btn btn-mini btn-rojo" type="submit">Eliminar</button>
+                                </form>
                             </c:if>
                         </td>
                     </tr>

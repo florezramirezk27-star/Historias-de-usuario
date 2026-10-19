@@ -283,7 +283,7 @@ docker run -d --name tguts_tomcat --network tguts_net -p 18080:8080 \
 #    http://localhost:18080/
 ```
 
-Verificado de punta a punta: login, rotación de sesión, CSRF (POST sin token → 403),
-selección de idea, subida de documento (multipart) y descarga protegida, calificación
-(incluida la validación de valores no numéricos/fuera de rango), aprobaciones,
-entrega final, sustentación y cierre del flujo hasta `FINALIZADO`.
+El resultado reproducible de construcción y la matriz de pruebas manuales están en
+[`TEST_RESULTS.md`](TEST_RESULTS.md). La validación completa de punta a punta requiere
+ejecutar la aplicación con Tomcat y MySQL; no debe declararse como realizada sin conservar
+el resultado de esos casos.

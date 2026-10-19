@@ -64,6 +64,9 @@
             <c:redirect url="ideas.jsp"/>
         </c:if>
         <c:choose>
+            <c:when test="${rol ne 'ADMIN' && rol ne 'COORDINACION' && rol ne 'DIRECTOR'}">
+                <c:redirect url="403.jsp"/>
+            </c:when>
             <c:when test="${empty param.titulo}"><c:set var="error" value="El título de la idea es obligatorio."/></c:when>
         </c:choose>
         <%-- El director solo puede editar sus propias ideas --%>

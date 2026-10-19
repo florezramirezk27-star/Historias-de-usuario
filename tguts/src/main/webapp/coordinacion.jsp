@@ -39,9 +39,9 @@
         <c:set var="evalOK" value="${qValEval.rowCount gt 0}"/>
     </c:if>
 
-    <%-- Validación: el anteproyecto debe pertenecer al estudiante indicado --%>
+    <%-- Validación: el anteproyecto debe pertenecer al estudiante indicado. --%>
     <sql:query dataSource="${ds}" var="qPertenece">
-        SELECT 1 FROM anteproyectos WHERE id = ? AND estudiante_id = ?
+        SELECT estado, director_id, evaluador_id FROM anteproyectos WHERE id = ? AND estudiante_id = ?
         <sql:param value="${param.anteproyecto_id}"/>
         <sql:param value="${param.estudiante_id}"/>
     </sql:query>
@@ -62,11 +62,20 @@
         <c:when test="${qPertenece.rowCount eq 0}">
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=no_pertenece"/>
         </c:when>
+        <%-- El director se define antes de su revisión; el evaluador solo se
+             asigna a un anteproyecto aprobado por el director. --%>
+        <c:when test="${param.director ne qPertenece.rows[0].director_id && qPertenece.rows[0].estado ne 'BORRADOR' && qPertenece.rows[0].estado ne 'RECHAZADO' && qPertenece.rows[0].estado ne 'ENVIADO'}">
+            <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=director_fuera_flujo"/>
+        </c:when>
+        <c:when test="${param.evaluador ne qPertenece.rows[0].evaluador_id && qPertenece.rows[0].estado ne 'APROBADO_DIRECTOR'}">
+            <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=evaluador_fuera_flujo"/>
+        </c:when>
         <c:otherwise>
             <sql:transaction dataSource="${ds}">
                 <sql:update>
                     UPDATE anteproyectos
-                    SET director_id = NULLIF(?, ''), evaluador_id = NULLIF(?, '')
+                    SET director_id = CASE WHEN estado IN ('BORRADOR','RECHAZADO','ENVIADO') THEN NULLIF(?, '') ELSE director_id END,
+                        evaluador_id = CASE WHEN estado = 'APROBADO_DIRECTOR' THEN NULLIF(?, '') ELSE evaluador_id END
                     WHERE id = ? AND estudiante_id = ?
                     <sql:param value="${param.director}"/>
                     <sql:param value="${param.evaluador}"/>
@@ -178,6 +187,12 @@
 <c:if test="${param.exito eq 'asignado'}">
     <div class="aviso aviso-ok">Director y evaluador asignados. Se enviaron las notificaciones (RF-26, RF-37).</div>
 </c:if>
+<c:if test="${param.error eq 'director_fuera_flujo'}">
+    <div class="aviso aviso-error">El director solo puede asignarse antes de que su revisión sea aprobada.</div>
+</c:if>
+<c:if test="${param.error eq 'evaluador_fuera_flujo'}">
+    <div class="aviso aviso-error">El evaluador solo puede asignarse cuando el anteproyecto esté aprobado por el director.</div>
+</c:if>
 <c:if test="${param.error eq 'sindirector'}">
     <div class="aviso aviso-error">Selecciona al menos un director o un evaluador.</div>
 </c:if>
@@ -238,7 +253,7 @@
                         <div class="form-fila">
                             <div>
                                 <label for="director">Director</label>
-                                <select id="director" name="director">
+                                <select id="director" name="director" ${f.estado ne 'BORRADOR' && f.estado ne 'RECHAZADO' && f.estado ne 'ENVIADO' ? 'disabled' : ''}>
                                     <option value="">-- Sin asignar --</option>
                                     <c:forEach items="${qDirectores.rows}" var="d">
                                         <option value="${d.id}" ${f.director_id eq d.id ? 'selected' : ''}>
@@ -246,10 +261,14 @@
                                         </option>
                                     </c:forEach>
                                 </select>
+                                <c:if test="${f.estado ne 'BORRADOR' && f.estado ne 'RECHAZADO' && f.estado ne 'ENVIADO'}">
+                                    <input type="hidden" name="director" value="${f.director_id}">
+                                    <small>La dirección queda fijada después de su revisión.</small>
+                                </c:if>
                             </div>
                             <div>
                                 <label for="evaluador">Evaluador</label>
-                                <select id="evaluador" name="evaluador">
+                                <select id="evaluador" name="evaluador" ${f.estado ne 'APROBADO_DIRECTOR' ? 'disabled' : ''}>
                                     <option value="">-- Sin asignar --</option>
                                     <c:forEach items="${qEvaluadores.rows}" var="e">
                                         <option value="${e.id}" ${f.evaluador_id eq e.id ? 'selected' : ''}>
@@ -257,6 +276,10 @@
                                         </option>
                                     </c:forEach>
                                 </select>
+                                <c:if test="${f.estado ne 'APROBADO_DIRECTOR'}">
+                                    <input type="hidden" name="evaluador" value="${f.evaluador_id}">
+                                    <small>Disponible cuando el director apruebe el anteproyecto.</small>
+                                </c:if>
                             </div>
                         </div>
                         <button class="btn btn-verde" type="submit">Guardar asignación</button>

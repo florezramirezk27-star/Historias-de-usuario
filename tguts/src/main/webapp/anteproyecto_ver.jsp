@@ -135,9 +135,7 @@
     <c:if test="${param.accion eq 'calificar_eval'}">
         <c:if test="${rol ne 'EVALUADOR'}"><c:redirect url="403.jsp"/></c:if>
         <c:choose>
-            <%-- El evaluador puede calificar en cuanto el anteproyecto le fue
-                 asignado (ENVIADO o ya aprobado por el director). --%>
-            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR' && ant.estado ne 'ENVIADO'}">
+            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
             </c:when>
             <c:when test="${empty param.calificacion}">
@@ -151,7 +149,7 @@
                 <sql:update dataSource="${ds}">
                     UPDATE anteproyectos
                     SET calificacion_evaluador = ?, observacion_evaluador = ?
-                    WHERE id = ? AND evaluador_id = ? AND estado IN ('ENVIADO','APROBADO_DIRECTOR')
+                    WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
                     <sql:param value="${param.calificacion}"/>
                     <sql:param value="${param.observacion}"/>
                     <sql:param value="${ant.id}"/>
@@ -179,6 +177,45 @@
                 </sql:update>
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=calificado_eval"/>
             </c:otherwise>
+        </c:choose>
+    </c:if>
+
+    <%-- El estudiante puede retirar únicamente un borrador o un anteproyecto
+         rechazado; los demás estados ya forman parte del proceso académico. --%>
+    <c:if test="${param.accion eq 'eliminar_anteproyecto'}">
+        <c:if test="${rol ne 'ESTUDIANTE'}"><c:redirect url="403.jsp"/></c:if>
+        <sql:update dataSource="${ds}" var="filasEliminadas">
+            DELETE FROM anteproyectos
+            WHERE id = ? AND estudiante_id = ? AND estado IN ('BORRADOR', 'RECHAZADO')
+            <sql:param value="${ant.id}"/>
+            <sql:param value="${yo.id}"/>
+        </sql:update>
+        <c:choose>
+            <c:when test="${filasEliminadas gt 0}"><c:redirect url="anteproyectos.jsp?exito=eliminado"/></c:when>
+            <c:otherwise><c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/></c:otherwise>
+        </c:choose>
+    </c:if>
+
+    <%-- La eliminación de una calificación solo se permite mientras su
+         respectiva etapa esté abierta. También elimina el registro histórico
+         del mismo calificador para que la consulta quede consistente. --%>
+    <c:if test="${param.accion eq 'eliminar_calificacion'}">
+        <c:choose>
+            <c:when test="${rol eq 'DIRECTOR' && ant.estado eq 'ENVIADO'}">
+                <sql:transaction dataSource="${ds}">
+                    <sql:update>UPDATE anteproyectos SET calificacion_director = NULL, observacion_director = NULL WHERE id = ? AND director_id = ? AND estado = 'ENVIADO'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
+                    <sql:update>DELETE FROM calificaciones WHERE anteproyecto_id = ? AND usuario_id = ? AND rol_calificador = 'DIRECTOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
+                </sql:transaction>
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=calificacion_eliminada"/>
+            </c:when>
+            <c:when test="${rol eq 'EVALUADOR' && ant.estado eq 'APROBADO_DIRECTOR'}">
+                <sql:transaction dataSource="${ds}">
+                    <sql:update>UPDATE anteproyectos SET calificacion_evaluador = NULL, observacion_evaluador = NULL WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
+                    <sql:update>DELETE FROM calificaciones WHERE anteproyecto_id = ? AND usuario_id = ? AND rol_calificador = 'EVALUADOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
+                </sql:transaction>
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=calificacion_eliminada"/>
+            </c:when>
+            <c:otherwise><c:redirect url="403.jsp"/></c:otherwise>
         </c:choose>
     </c:if>
 
@@ -338,6 +375,9 @@
 <c:if test="${param.exito eq 'calificado_eval'}">
     <div class="aviso aviso-ok">Calificación del evaluador guardada (RF-22, RF-35).</div>
 </c:if>
+<c:if test="${param.exito eq 'calificacion_eliminada'}">
+    <div class="aviso aviso-ok">Calificación eliminada.</div>
+</c:if>
 <c:if test="${param.error eq 'sincalificacion'}">
     <div class="aviso aviso-error">Debes ingresar una calificación (0 a 5) antes de continuar.</div>
 </c:if>
@@ -451,6 +491,13 @@
                       placeholder="Comentarios sobre el anteproyecto"><c:out value="${ant['observacion_director']}"/></textarea>
             <button class="btn" type="submit">Guardar calificación</button>
         </form>
+        <c:if test="${not empty ant['calificacion_director']}">
+            <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}" style="margin-top:8px" onsubmit="return confirm('Eliminar esta calificación?')">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
+                <input type="hidden" name="accion" value="eliminar_calificacion">
+                <button class="btn btn-rojo" type="submit">Eliminar calificación</button>
+            </form>
+        </c:if>
 
         <h3>2. Decisión</h3>
         <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}" style="display:inline"
@@ -475,9 +522,8 @@
 </c:if>
 
 <%-- ================= ACCIONES DEL EVALUADOR (RF-22 a RF-24) ================= --%>
-<%-- El evaluador ve sus acciones una vez que el anteproyecto le fue asignado:
-     puede calificar desde ENVIADO y aprobar cuando ya está APROBADO_DIRECTOR. --%>
-<c:if test="${rol eq 'EVALUADOR' && (ant.estado eq 'APROBADO_DIRECTOR' || ant.estado eq 'ENVIADO')}">
+<%-- El evaluador solo interviene después de la aprobación del director. --%>
+<c:if test="${rol eq 'EVALUADOR' && ant.estado eq 'APROBADO_DIRECTOR'}">
     <div class="panel">
         <h2 style="margin-top:0">Evaluación del anteproyecto (RF-22)</h2>
 
@@ -493,6 +539,13 @@
                       placeholder="Comentarios sobre el anteproyecto"><c:out value="${ant['observacion_evaluador']}"/></textarea>
             <button class="btn" type="submit">Guardar calificación</button>
         </form>
+        <c:if test="${not empty ant['calificacion_evaluador']}">
+            <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}" style="margin-top:8px" onsubmit="return confirm('Eliminar esta calificación?')">
+                <input type="hidden" name="csrf_token" value="${csrfToken}">
+                <input type="hidden" name="accion" value="eliminar_calificacion">
+                <button class="btn btn-rojo" type="submit">Eliminar calificación</button>
+            </form>
+        </c:if>
 
         <c:choose>
             <%-- Ya aprobado por el director: se habilita la aprobación del evaluador --%>
