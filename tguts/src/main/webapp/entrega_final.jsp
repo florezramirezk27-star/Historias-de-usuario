@@ -2,11 +2,11 @@
      entrega_final.jsp - Entrega del documento final
      Flujo: tras APROBADO_EVALUADOR → ENTREGA_DOCUMENTO_FINAL
      Roles:
-       - Estudiante: registra el documento final (archivo o URL)
+       - Estudiante: registra el documento final (solo por URL/enlace)
        - Director/Coordinación: revisan y aprueban/observan
        - Evaluador: consulta
-     El formulario usa multipart/form-data; common/config.jsp procesa
-     los campos (Map "campos") y guarda el archivo con validación.
+     Los documentos se referencian por URL; common/config.jsp expone los
+     campos del formulario en el Map "campos".
      ========================================================== --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
@@ -56,12 +56,12 @@
 </c:if>
 <c:set var="ant" value="${qAntAcceso.rows[0]}"/>
 
-<%-- Segundo: buscar entrega si existe --%>
+<%-- Tercero: buscar entrega si existe. Se consulta SOLO la tabla entrega_final:
+     JSTL arma las filas con el NOMBRE REAL de la columna (getColumnName), así
+     que un JOIN con anteproyectos duplicaría las claves "estado"/"titulo" y
+     "entrega.estado" terminaría valiendo el estado del anteproyecto. --%>
 <sql:query dataSource="${ds}" var="qEntrega">
-    SELECT e.*, a.estado as ant_estado, a.titulo as ant_titulo
-    FROM entrega_final e
-    JOIN anteproyectos a ON a.id = e.anteproyecto_id
-    WHERE e.anteproyecto_id = ?
+    SELECT * FROM entrega_final WHERE anteproyecto_id = ?
     <sql:param value="${param.id}"/>
 </sql:query>
 <c:set var="entrega" value="${qEntrega.rowCount gt 0 ? qEntrega.rows[0] : null}"/>
@@ -76,13 +76,13 @@
 <c:if test="${pageContext.request.method eq 'POST' && campos.accion eq 'corregir'}">
     <%@ include file="common/verify_csrf.jsp" %>
     <c:if test="${rol ne 'ESTUDIANTE'}"><c:redirect url="403.jsp"/></c:if>
-    <c:set var="docCorregido" value="${campos.documento}"/>
-    <c:if test="${not empty requestScope.archivo_subido}"><c:set var="docCorregido" value="${requestScope.archivo_subido}"/></c:if>
+    <%-- Documento solo por URL (enlace). Si no se escribe una nueva, se
+         conserva la registrada. --%>
+    <c:set var="docCorregido" value="${not empty campos.documento ? campos.documento : entrega.documento}"/>
     <c:choose>
-        <c:when test="${not empty requestScope.archivo_error}"><c:set var="error" value="${requestScope.archivo_error}"/></c:when>
         <c:when test="${ant.estado ne 'ENTREGA_DOCUMENTO_FINAL' || empty entrega || entrega.estado ne 'OBSERVADO'}"><c:set var="error" value="No hay una entrega observada disponible para corregir."/></c:when>
-        <c:when test="${empty campos.titulo || empty docCorregido}"><c:set var="error" value="El título y el documento corregido son obligatorios."/></c:when>
-        <c:when test="${empty requestScope.archivo_subido && not (fn:startsWith(campos.documento, 'http://') || fn:startsWith(campos.documento, 'https://'))}"><c:set var="error" value="La URL debe comenzar por http:// o https://."/></c:when>
+        <c:when test="${empty campos.titulo || empty docCorregido}"><c:set var="error" value="El título y la URL del documento corregido son obligatorios."/></c:when>
+        <c:when test="${not empty campos.documento && not (fn:startsWith(campos.documento, 'http://') || fn:startsWith(campos.documento, 'https://'))}"><c:set var="error" value="La URL del documento corregido debe comenzar por http:// o https://."/></c:when>
         <c:otherwise>
             <sql:transaction dataSource="${ds}">
                 <sql:update var="filasCorregidas">
@@ -111,15 +111,10 @@
         <c:redirect url="403.jsp"/>
     </c:if>
 
+    <%-- Documento final solo por URL (enlace). --%>
     <c:set var="docFinal" value="${campos.documento}"/>
-    <c:if test="${not empty requestScope.archivo_subido}">
-        <c:set var="docFinal" value="${requestScope.archivo_subido}"/>
-    </c:if>
 
     <c:choose>
-        <c:when test="${not empty requestScope.archivo_error}">
-            <c:set var="error" value="${requestScope.archivo_error}"/>
-        </c:when>
         <c:when test="${ant.estado ne 'APROBADO_EVALUADOR' || not empty entrega}">
             <c:set var="error" value="La entrega final no está permitida en el estado actual."/>
         </c:when>
@@ -127,9 +122,9 @@
             <c:set var="error" value="El título es obligatorio."/>
         </c:when>
         <c:when test="${empty docFinal}">
-            <c:set var="error" value="Debes subir el archivo o indicar la URL del documento final."/>
+            <c:set var="error" value="Debes indicar la URL (enlace) del documento final."/>
         </c:when>
-        <c:when test="${empty requestScope.archivo_subido && not (fn:startsWith(campos.documento, 'http://') || fn:startsWith(campos.documento, 'https://'))}">
+        <c:when test="${not (fn:startsWith(docFinal, 'http://') || fn:startsWith(docFinal, 'https://'))}">
             <c:set var="error" value="La URL del documento final debe comenzar por http:// o https://."/>
         </c:when>
         <c:otherwise>
@@ -251,21 +246,18 @@
         <c:if test="${rol eq 'ESTUDIANTE'}">
             <div class="panel">
                 <h2 style="margin-top:0">Entregar documento final</h2>
-                <form method="post" action="entrega_final.jsp?id=${param.id}" enctype="multipart/form-data">
+                <form method="post" action="entrega_final.jsp?id=${param.id}">
                     <input type="hidden" name="csrf_token" value="${csrfToken}">
                     <input type="hidden" name="accion" value="crear">
                     <label for="titulo">Título del trabajo de grado</label>
                     <input type="text" id="titulo" name="titulo" required maxlength="200"
                            value="${fn:escapeXml(ant.titulo)}">
-                    <label for="archivo">Archivo final (PDF, DOC, DOCX, ODT, PPT o PPTX — máx. 20 MB)</label>
-                    <input type="file" id="archivo" name="archivo"
-                           accept=".pdf,.doc,.docx,.odt,.ppt,.pptx">
-                    <label for="documento">… o URL del documento final</label>
+                    <label for="documento">URL del documento final (enlace a Drive, OneDrive, etc.)</label>
                     <div class="campo-url">
                         <span class="icono-url" aria-hidden="true">
                             <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                         </span>
-                        <input type="url" id="documento" name="documento"
+                        <input type="url" id="documento" name="documento" required
                                placeholder="https://drive.google.com/...">
                     </div>
                     <button class="btn btn-verde" type="submit">Entregar documento final</button>
@@ -308,11 +300,10 @@
         <c:if test="${rol eq 'ESTUDIANTE' && entrega.estado eq 'OBSERVADO' && ant.estado eq 'ENTREGA_DOCUMENTO_FINAL'}">
             <div class="panel">
                 <h2 style="margin-top:0">Corregir y reenviar documento</h2>
-                <form method="post" action="entrega_final.jsp?id=${param.id}" enctype="multipart/form-data">
+                <form method="post" action="entrega_final.jsp?id=${param.id}">
                     <input type="hidden" name="csrf_token" value="${csrfToken}"><input type="hidden" name="accion" value="corregir">
                     <label for="tituloCorreccion">Título</label><input type="text" id="tituloCorreccion" name="titulo" required maxlength="200" value="${fn:escapeXml(entrega.titulo)}">
-                    <label for="archivoCorreccion">Archivo corregido</label><input type="file" id="archivoCorreccion" name="archivo" accept=".pdf,.doc,.docx,.odt,.ppt,.pptx">
-                    <label for="documentoCorreccion">… o URL del documento corregido</label><input type="url" id="documentoCorreccion" name="documento" placeholder="https://drive.google.com/...">
+                    <label for="documentoCorreccion">URL del documento corregido</label><input type="url" id="documentoCorreccion" name="documento" required placeholder="https://drive.google.com/...">
                     <button class="btn btn-verde" type="submit">Enviar corrección</button>
                 </form>
             </div>

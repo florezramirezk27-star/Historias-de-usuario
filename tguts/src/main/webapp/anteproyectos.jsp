@@ -65,10 +65,13 @@
 </p>
 
 <c:if test="${param.exito eq 'seleccionada'}">
-    <div class="aviso aviso-ok">Idea seleccionada. Ahora completa la información y sube el documento de tu anteproyecto.</div>
+    <div class="aviso aviso-ok">Idea seleccionada. Ahora completa la información y registra el enlace (URL) de tu anteproyecto.</div>
 </c:if>
 <c:if test="${param.exito eq 'enviado'}">
     <div class="aviso aviso-ok">Anteproyecto enviado. El director recibió una notificación para su revisión.</div>
+</c:if>
+<c:if test="${param.exito eq 'eliminado'}">
+    <div class="aviso aviso-ok">Anteproyecto eliminado. La idea volvió al banco para que puedas elegir otra.</div>
 </c:if>
 
 <c:choose>

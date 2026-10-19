@@ -1,9 +1,7 @@
 <%-- ==========================================================
      anteproyecto_form.jsp - Estudiante: completa y registra el
-     documento del anteproyecto, como ARCHIVO subido o como URL
-     (RF-14, RF-16, RF-36).
-     El formulario usa multipart/form-data; common/config.jsp procesa
-     los campos (Map "campos") y guarda el archivo con validación.
+     documento del anteproyecto mediante URL (enlace) (RF-14, RF-16, RF-36).
+     common/config.jsp expone los campos del formulario en el Map "campos".
      ========================================================== --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
@@ -64,19 +62,11 @@
 <c:if test="${pageContext.request.method eq 'POST'}">
     <%@ include file="common/verify_csrf.jsp" %>
 
-    <%-- Documento final: archivo subido > URL escrita > documento anterior --%>
-    <c:set var="docFinal" value="${ant.documento}"/>
-    <c:if test="${not empty campos.documento}">
-        <c:set var="docFinal" value="${campos.documento}"/>
-    </c:if>
-    <c:if test="${not empty requestScope.archivo_subido}">
-        <c:set var="docFinal" value="${requestScope.archivo_subido}"/>
-    </c:if>
+    <%-- Documento: solo por URL (enlace). Si no se escribe una nueva, se
+         conserva la registrada. --%>
+    <c:set var="docFinal" value="${not empty campos.documento ? campos.documento : ant.documento}"/>
 
     <c:choose>
-        <c:when test="${not empty requestScope.archivo_error}">
-            <c:set var="error" value="${requestScope.archivo_error}"/>
-        </c:when>
         <c:when test="${empty campos.titulo}">
             <c:set var="error" value="El título del anteproyecto es obligatorio."/>
         </c:when>
@@ -84,9 +74,9 @@
             <c:set var="error" value="Debes seleccionar al director."/>
         </c:when>
         <c:when test="${empty docFinal}">
-            <c:set var="error" value="Debes subir un archivo o indicar la URL del documento del anteproyecto."/>
+            <c:set var="error" value="Debes indicar la URL (enlace) del documento del anteproyecto."/>
         </c:when>
-        <c:when test="${empty requestScope.archivo_subido && not empty campos.documento
+        <c:when test="${not empty campos.documento
                         && not (fn:startsWith(campos.documento, 'http://') || fn:startsWith(campos.documento, 'https://'))}">
             <c:set var="error" value="La URL del documento debe comenzar por http:// o https://."/>
         </c:when>
@@ -147,7 +137,7 @@
 <%@ include file="common/header.jsp" %>
 
 <h1>Mi anteproyecto</h1>
-<p class="subtitulo">Completa la información y adjunta el documento como archivo o enlace (RF-14, RF-16).</p>
+<p class="subtitulo">Completa la información y adjunta el enlace (URL) del documento (RF-14, RF-16).</p>
 
 <c:if test="${not empty error}">
     <div class="aviso aviso-error"><c:out value="${error}"/></div>
@@ -167,7 +157,7 @@
     <p class="dato"><b>Director:</b> <c:out value="${dirNombre}"/></p>
     <p class="dato"><b>Evaluador:</b> <c:out value="${evalNombre}"/></p>
 
-    <form method="post" action="anteproyecto_form.jsp?id=${ant.id}" enctype="multipart/form-data">
+    <form method="post" action="anteproyecto_form.jsp?id=${ant.id}">
         <input type="hidden" name="csrf_token" value="${csrfToken}">
         <label for="titulo">Título del anteproyecto</label>
         <input type="text" id="titulo" name="titulo" required maxlength="200"
@@ -182,11 +172,7 @@
             </c:forEach>
         </select>
 
-        <label for="archivo">Documento (archivo: PDF, DOC, DOCX, ODT, PPT o PPTX — máx. 20 MB)</label>
-        <input type="file" id="archivo" name="archivo"
-               accept=".pdf,.doc,.docx,.odt,.ppt,.pptx">
-
-        <label for="documento">… o URL del documento del anteproyecto</label>
+        <label for="documento">URL del documento (enlace a Drive, OneDrive, etc.)</label>
         <div class="campo-url">
             <span class="icono-url" aria-hidden="true">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>

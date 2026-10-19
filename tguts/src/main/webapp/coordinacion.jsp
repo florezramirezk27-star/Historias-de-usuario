@@ -46,6 +46,14 @@
         <sql:param value="${param.estudiante_id}"/>
     </sql:query>
 
+    <%-- Normaliza null/"" antes de comparar: un campo deshabilitado se envía
+         con hidden vacío (""), pero la columna puede ser NULL; en EL "" ne null
+         es true y dispararía falsos positivos. --%>
+    <c:set var="dirActual" value="${empty qPertenece.rows[0].director_id ? '' : qPertenece.rows[0].director_id}"/>
+    <c:set var="evalActual" value="${empty qPertenece.rows[0].evaluador_id ? '' : qPertenece.rows[0].evaluador_id}"/>
+    <c:set var="dirNuevo" value="${empty param.director ? '' : param.director}"/>
+    <c:set var="evalNuevo" value="${empty param.evaluador ? '' : param.evaluador}"/>
+
     <c:choose>
         <c:when test="${empty param.anteproyecto_id || empty param.estudiante_id}">
             <c:redirect url="coordinacion.jsp"/>
@@ -64,10 +72,10 @@
         </c:when>
         <%-- El director se define antes de su revisión; el evaluador solo se
              asigna a un anteproyecto aprobado por el director. --%>
-        <c:when test="${param.director ne qPertenece.rows[0].director_id && qPertenece.rows[0].estado ne 'BORRADOR' && qPertenece.rows[0].estado ne 'RECHAZADO' && qPertenece.rows[0].estado ne 'ENVIADO'}">
+        <c:when test="${dirNuevo ne dirActual && qPertenece.rows[0].estado ne 'BORRADOR' && qPertenece.rows[0].estado ne 'RECHAZADO' && qPertenece.rows[0].estado ne 'ENVIADO'}">
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=director_fuera_flujo"/>
         </c:when>
-        <c:when test="${param.evaluador ne qPertenece.rows[0].evaluador_id && qPertenece.rows[0].estado ne 'APROBADO_DIRECTOR'}">
+        <c:when test="${evalNuevo ne evalActual && qPertenece.rows[0].estado ne 'APROBADO_DIRECTOR'}">
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=evaluador_fuera_flujo"/>
         </c:when>
         <c:otherwise>

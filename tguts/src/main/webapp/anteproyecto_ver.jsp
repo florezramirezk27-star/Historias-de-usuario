@@ -190,6 +190,13 @@
             <sql:param value="${ant.id}"/>
             <sql:param value="${yo.id}"/>
         </sql:update>
+        <c:if test="${filasEliminadas gt 0 && not empty ant.idea_id}">
+            <sql:update dataSource="${ds}">
+                UPDATE ideas SET estado = 'PUBLICADA'
+                WHERE id = ? AND estado = 'SELECCIONADA'
+                <sql:param value="${ant.idea_id}"/>
+            </sql:update>
+        </c:if>
         <c:choose>
             <c:when test="${filasEliminadas gt 0}"><c:redirect url="anteproyectos.jsp?exito=eliminado"/></c:when>
             <c:otherwise><c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/></c:otherwise>
@@ -202,14 +209,14 @@
     <c:if test="${param.accion eq 'eliminar_calificacion'}">
         <c:choose>
             <c:when test="${rol eq 'DIRECTOR' && ant.estado eq 'ENVIADO'}">
-                <sql:transaction dataSource="${ds}">
+                <sql:transaction>
                     <sql:update>UPDATE anteproyectos SET calificacion_director = NULL, observacion_director = NULL WHERE id = ? AND director_id = ? AND estado = 'ENVIADO'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                     <sql:update>DELETE FROM calificaciones WHERE anteproyecto_id = ? AND usuario_id = ? AND rol_calificador = 'DIRECTOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                 </sql:transaction>
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=calificacion_eliminada"/>
             </c:when>
             <c:when test="${rol eq 'EVALUADOR' && ant.estado eq 'APROBADO_DIRECTOR'}">
-                <sql:transaction dataSource="${ds}">
+                <sql:transaction>
                     <sql:update>UPDATE anteproyectos SET calificacion_evaluador = NULL, observacion_evaluador = NULL WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                     <sql:update>DELETE FROM calificaciones WHERE anteproyecto_id = ? AND usuario_id = ? AND rol_calificador = 'EVALUADOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                 </sql:transaction>
