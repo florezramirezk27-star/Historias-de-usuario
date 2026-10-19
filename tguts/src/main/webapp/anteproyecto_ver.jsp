@@ -209,14 +209,14 @@
     <c:if test="${param.accion eq 'eliminar_calificacion'}">
         <c:choose>
             <c:when test="${rol eq 'DIRECTOR' && ant.estado eq 'ENVIADO'}">
-                <sql:transaction>
+                <sql:transaction dataSource="${ds}">
                     <sql:update>UPDATE anteproyectos SET calificacion_director = NULL, observacion_director = NULL WHERE id = ? AND director_id = ? AND estado = 'ENVIADO'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                     <sql:update>DELETE FROM calificaciones WHERE anteproyecto_id = ? AND usuario_id = ? AND rol_calificador = 'DIRECTOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                 </sql:transaction>
                 <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=calificacion_eliminada"/>
             </c:when>
             <c:when test="${rol eq 'EVALUADOR' && ant.estado eq 'APROBADO_DIRECTOR'}">
-                <sql:transaction>
+                <sql:transaction dataSource="${ds}">
                     <sql:update>UPDATE anteproyectos SET calificacion_evaluador = NULL, observacion_evaluador = NULL WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                     <sql:update>DELETE FROM calificaciones WHERE anteproyecto_id = ? AND usuario_id = ? AND rol_calificador = 'EVALUADOR'<sql:param value="${ant.id}"/><sql:param value="${yo.id}"/></sql:update>
                 </sql:transaction>
@@ -600,8 +600,28 @@
         </c:if>
     </div>
 </c:if>
+<c:if test="${ant.estado eq 'ENTREGA_DOCUMENTO_FINAL'}">
+    <div class="aviso aviso-info">El documento final está en revisión por el director/coordinación.</div>
+    <div class="panel">
+        <h2 style="margin-top:0">Entrega final</h2>
+        <c:if test="${rol eq 'ESTUDIANTE'}">
+            <a class="btn btn-verde" href="entrega_final.jsp?id=${ant.id}">Consultar / corregir mi entrega final</a>
+        </c:if>
+        <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION' || rol eq 'DIRECTOR'}">
+            <a class="btn" href="entrega_final.jsp?id=${ant.id}">Ver / revisar entrega final</a>
+        </c:if>
+        <c:if test="${rol eq 'EVALUADOR'}">
+            <a class="btn btn-gris" href="entrega_final.jsp?id=${ant.id}">Consultar entrega final</a>
+        </c:if>
+    </div>
+</c:if>
 <c:if test="${ant.estado eq 'REVISIÓN_FINAL'}">
     <div class="aviso aviso-ok">Documento final aprobado. Se puede programar la sustentación.</div>
+    <div class="panel">
+        <h2 style="margin-top:0">Próximos pasos</h2>
+        <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION' || rol eq 'DIRECTOR' || rol eq 'ESTUDIANTE'}">
+            <a class="btn btn-gris" href="entrega_final.jsp?id=${ant.id}">Ver entrega final</a>
+        </c:if>
     <div class="panel">
         <h2 style="margin-top:0">Próximos pasos</h2>
         <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION'}">

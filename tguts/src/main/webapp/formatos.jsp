@@ -30,8 +30,9 @@
                 <c:when test="${empty param.url}">
                     <c:set var="error" value="Debes indicar la URL del documento del formato."/>
                 </c:when>
-                <c:when test="${not (fn:startsWith(param.url, 'http://') || fn:startsWith(param.url, 'https://'))}">
-                    <c:set var="error" value="La URL del documento debe comenzar por http:// o https://."/>
+                <c:when test="${not (fn:startsWith(param.url, 'http://') || fn:startsWith(param.url, 'https://')
+                                      || (not fn:startsWith(param.url, '/') && not fn:contains(param.url, '..') && not fn:contains(param.url, ':')))}">
+                    <c:set var="error" value="Indica una URL (http/https) o una ruta relativa dentro de la aplicación (p. ej. formatos/FDC-124-Anteproyecto.pdf)."/>
                 </c:when>
                 <c:otherwise>
                     <sql:update dataSource="${ds}">
@@ -51,8 +52,9 @@
                 <c:when test="${empty param.id || empty param.url}">
                     <c:set var="error" value="Debes indicar la nueva URL del documento."/>
                 </c:when>
-                <c:when test="${not (fn:startsWith(param.url, 'http://') || fn:startsWith(param.url, 'https://'))}">
-                    <c:set var="error" value="La URL del documento debe comenzar por http:// o https://."/>
+                <c:when test="${not (fn:startsWith(param.url, 'http://') || fn:startsWith(param.url, 'https://')
+                                      || (not fn:startsWith(param.url, '/') && not fn:contains(param.url, '..') && not fn:contains(param.url, ':')))}">
+                    <c:set var="error" value="Indica una URL (http/https) o una ruta relativa dentro de la aplicación (p. ej. formatos/FDC-124-Anteproyecto.pdf)."/>
                 </c:when>
                 <c:otherwise>
                     <sql:update dataSource="${ds}">
@@ -76,7 +78,12 @@
 <%@ include file="common/header.jsp" %>
 
 <h1>Formatos de grado</h1>
-<p class="subtitulo">Plantillas y formatos oficiales del proceso de grado (RF-33).</p>
+<p class="subtitulo">Plantillas y formatos de apoyo del proceso de grado (RF-33).</p>
+<div class="aviso aviso-info">
+    Los documentos aquí registrados son <b>datos de demostración</b> (plantillas base),
+    no formatos institucionales oficiales. Verifica con el comité de trabajos de grado
+    antes de considerarlos vigentes.
+</div>
 
 <c:if test="${param.exito eq 'creado'}">
     <div class="aviso aviso-ok">Formato agregado con su enlace.</div>
@@ -102,8 +109,8 @@
                 <span class="icono-url" aria-hidden="true">
                     <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                 </span>
-                <input type="url" id="url" name="url" required
-                       placeholder="https://drive.google.com/...">
+                <input type="text" id="url" name="url" required
+                       placeholder="https://drive.google.com/... o formatos/FDC-124-Anteproyecto.pdf">
             </div>
             <label for="descripcion">Descripción</label>
             <input type="text" id="descripcion" name="descripcion" maxlength="400">
@@ -135,6 +142,12 @@
                         <c:when test="${fn:startsWith(f.url, 'http://') || fn:startsWith(f.url, 'https://')}">
                             <a class="enlace-doc" href="${fn:escapeXml(f.url)}" target="_blank" rel="noopener">Abrir formato</a>
                         </c:when>
+                        <%-- Ruta relativa dentro de la aplicación (documentos base
+                             de formatos, p. ej. formatos/FDC-124-Anteproyecto.pdf). --%>
+                        <c:when test="${not fn:startsWith(f.url, '/') && not fn:contains(f.url, '..')}">
+                            <c:url value="/${f.url}" var="fmtUrl"/>
+                            <a class="enlace-doc" href="${fmtUrl}" target="_blank" rel="noopener">Abrir formato</a>
+                        </c:when>
                         <c:otherwise>
                             <c:out value="${f.url}"/>
                         </c:otherwise>
@@ -151,8 +164,8 @@
                                 <span class="icono-url" aria-hidden="true">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
                                 </span>
-                                <input type="url" name="url" value="${fn:escapeXml(f.url)}"
-                                       placeholder="https://..." required>
+                                <input type="text" name="url" value="${fn:escapeXml(f.url)}"
+                                       placeholder="https://... o formatos/FDC-124-Anteproyecto.pdf" required>
                             </div>
                             <button class="btn btn-mini btn-verde" type="submit"
                                     onclick="return confirm('¿Reemplazar el documento de este formato?')">Guardar</button>

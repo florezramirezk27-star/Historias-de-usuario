@@ -59,6 +59,10 @@
 
 <h1>Calendario académico</h1>
 <p class="subtitulo">Fechas importantes del proceso de trabajos de grado (RF-32).</p>
+<div class="aviso aviso-info">
+    Las fechas iniciales son <b>datos de demostración</b>, no el calendario académico
+    oficial. Deben reemplazarse con las fechas publicadas por la institución.
+</div>
 
 <c:if test="${param.exito eq 'creado'}">
     <div class="aviso aviso-ok">Evento agregado al calendario.</div>

@@ -37,7 +37,7 @@ def db(sql):
         ["docker", "exec", MYSQL, "mysql", "-uroot", "-prootpw", "-N", "-B",
          "db_tgd_uts", "-e", sql],
         capture_output=True, text=True)
-    return (out.stdout or "").strip()
+    return (out.stdout or "").strip().splitlines()[0].strip() if out.stdout else ""
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -149,27 +149,43 @@ def main():
            "opción Evaluador presente=%s, opción Coordinación presente=%s" % (opt_eval, opt_coord))
 
     token = csrf(html_ideas)
+    import time
+    unique_titulo = "IDEA-E2E-%d" % int(time.time())
     admin.post("/ideas.jsp", {"csrf_token": token, "accion": "crear",
-                              "titulo": "IDEA-E2E", "descripcion": "prueba",
+                              "titulo": unique_titulo, "descripcion": "prueba",
                               "docente": eval_id})
-    idea_id = db("SELECT id FROM ideas WHERE titulo='IDEA-E2E';")
+    idea_id = db("SELECT id FROM ideas WHERE titulo='%s';" % unique_titulo)
     doc_creada = db("SELECT docente_id FROM ideas WHERE id=%s;" % idea_id)
     _, _, html_ed = admin.get("/ideas.jsp?accion=editar&id=" + idea_id)
     token = csrf(html_ed)
     admin.post("/ideas.jsp", {"csrf_token": token, "accion": "actualizar", "id": idea_id,
-                              "titulo": "IDEA-E2E", "descripcion": "editada", "docente": dir_id})
+                              "titulo": unique_titulo, "descripcion": "editada", "docente": dir_id})
     doc_tras_editar = db("SELECT docente_id FROM ideas WHERE id=%s;" % idea_id)
     record("Ideas: el docente seleccionado se guarda al editar",
            doc_creada == eval_id and doc_tras_editar == dir_id,
            "docente_id al crear=%s, al editar=%s (esperado %s)" % (doc_creada, doc_tras_editar, dir_id))
 
     # ---------------- 4) Formulario del estudiante: valida director ----------
-    est, _, _, _ = login("estudiante@uts.edu.co", "estudiante123")
+    # Limpiamos anteproyecto previo de estudiante2 si existe
+    db("DELETE FROM anteproyectos WHERE estudiante_id=(SELECT id FROM usuarios WHERE email='estudiante2@uts.edu.co');")
+    db("UPDATE ideas SET estado='PUBLICADA' WHERE titulo LIKE 'IDEA-E2E-FORM-%';")
+    # Creamos una idea dedicada para estudiante2 y la seleccionamos
+    admin, _, _, _ = login("admin@uts.edu.co", "admin123")
+    _, _, html_ideas2 = admin.get("/ideas.jsp")
+    token = csrf(html_ideas2)
+    import time
+    unique_titulo2 = "IDEA-E2E-FORM-%d" % int(time.time())
+    admin.post("/ideas.jsp", {"csrf_token": token, "accion": "crear",
+                              "titulo": unique_titulo2, "descripcion": "para test formulario",
+                              "docente": eval_id})
+    idea_id2 = db("SELECT id FROM ideas WHERE titulo='%s';" % unique_titulo2)
+
+    est, _, _, _ = login("estudiante2@uts.edu.co", "estudiante123")
     _, _, html_bolsa = est.get("/ideas.jsp")
     token = csrf(html_bolsa)
-    est.post("/ideas.jsp", {"csrf_token": token, "accion": "seleccionar", "id": idea_id})
+    est.post("/ideas.jsp", {"csrf_token": token, "accion": "seleccionar", "id": idea_id2})
     ant_id = db("SELECT id FROM anteproyectos WHERE estudiante_id="
-                "(SELECT id FROM usuarios WHERE email='estudiante@uts.edu.co');")
+                "(SELECT id FROM usuarios WHERE email='estudiante2@uts.edu.co');")
     # Intento con coordinacion (no es director) -> debe rechazarse en servidor
     _, _, html_form = est.get("/anteproyecto_form.jsp?id=" + ant_id)
     token = csrf(html_form)
@@ -191,6 +207,10 @@ def main():
     estado_enviado = db("SELECT estado FROM anteproyectos WHERE id=%s;" % ant_id)
     record("Estudiante: envia anteproyecto con director valido", estado_enviado == "ENVIADO",
            "estado=%s" % estado_enviado)
+
+    # El anteproyecto de estudiante2 (con director correcto) se usa para el resto del flujo
+    ant_id = db("SELECT id FROM anteproyectos WHERE estudiante_id="
+                "(SELECT id FROM usuarios WHERE email='estudiante2@uts.edu.co');")
 
     # ---------------- 5) Director: califica y ELIMINA calificacion ----------
     dr, _, _, _ = login("director@uts.edu.co", "director123")
@@ -261,7 +281,7 @@ def main():
                "email": "director2@uts.edu.co", "password": "director2123", "rol": "DIRECTOR",
                "codigo": ""})
     dir2 = db("SELECT id FROM usuarios WHERE email='director2@uts.edu.co';")
-    est_id = db("SELECT id FROM usuarios WHERE email='estudiante@uts.edu.co';")
+    est_id = db("SELECT id FROM usuarios WHERE email='estudiante2@uts.edu.co';")
     eval_actual = db("SELECT evaluador_id FROM anteproyectos WHERE id=%s;" % ant_id)
     coord, _, _, _ = login("coord@uts.edu.co", "coord123")
     _, _, html_f = coord.get("/coordinacion.jsp?accion=ficha&id=" + est_id)
@@ -281,7 +301,7 @@ def main():
                                      "director": dir_id, "evaluador": eval_actual})
 
     # ---------------- 9) Entrega final: acceso del estudiante --------------
-    est, _, _, _ = login("estudiante@uts.edu.co", "estudiante123")
+    est, _, _, _ = login("estudiante2@uts.edu.co", "estudiante123")
     _, _, html_av = est.get("/anteproyecto_ver.jsp?id=" + ant_id)
     tiene_enlace = ("entrega_final.jsp?id=" + ant_id) in html_av
     _, _, html_e = est.get("/entrega_final.jsp?id=" + ant_id)
@@ -325,7 +345,7 @@ def main():
            "revisado_por=%s, usuario sigue existiendo=%s, mensaje de bloqueo=%s" % (
                revisado_por, existe_coord2, "No se puede eliminar" in body_del_u))
 
-    est, _, _, _ = login("estudiante@uts.edu.co", "estudiante123")
+    est, _, _, _ = login("estudiante2@uts.edu.co", "estudiante123")
     _, _, html_corr = est.get("/entrega_final.jsp?id=" + ant_id)
     ve_correccion = "Corregir y reenviar documento" in html_corr
     record("Entrega final: el estudiante ve correccion tras OBSERVADO",

@@ -66,8 +66,12 @@
 </sql:query>
 <c:set var="entrega" value="${qEntrega.rowCount gt 0 ? qEntrega.rows[0] : null}"/>
 
-<%-- El estudiante puede crear la primera entrega o reemplazar una entrega observada. --%>
-<c:if test="${rol eq 'ESTUDIANTE' && not ((ant.estado eq 'APROBADO_EVALUADOR' && empty entrega) || (ant.estado eq 'ENTREGA_DOCUMENTO_FINAL' && not empty entrega && entrega.estado eq 'OBSERVADO'))}">
+<%-- Acceso del estudiante:
+       * puede consultar/revisar su entrega SIEMPRE que exista (ENTREGADO,
+         EN_REVISION, OBSERVADO o APROBADO), para no perder el enlace;
+       * solo puede ver el formulario de primera entrega cuando el
+         anteproyecto está APROBADO_EVALUADOR y aún no hay entrega. --%>
+<c:if test="${rol eq 'ESTUDIANTE' && empty entrega && ant.estado ne 'APROBADO_EVALUADOR'}">
     <c:redirect url="anteproyectos.jsp"/>
 </c:if>
 

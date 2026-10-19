@@ -66,12 +66,26 @@
          conserva la registrada. --%>
     <c:set var="docFinal" value="${not empty campos.documento ? campos.documento : ant.documento}"/>
 
+    <%-- Validación de rol en servidor: el director elegido debe existir, tener
+         rol DIRECTOR y estar activo (no confiar solo en el <select>). --%>
+    <c:set var="dirOK" value="false"/>
+    <c:if test="${not empty campos.director}">
+        <sql:query dataSource="${ds}" var="qValDir">
+            SELECT 1 FROM usuarios WHERE id = ? AND rol = 'DIRECTOR' AND activo = 1
+            <sql:param value="${campos.director}"/>
+        </sql:query>
+        <c:set var="dirOK" value="${qValDir.rowCount gt 0}"/>
+    </c:if>
+
     <c:choose>
         <c:when test="${empty campos.titulo}">
             <c:set var="error" value="El título del anteproyecto es obligatorio."/>
         </c:when>
         <c:when test="${empty campos.director}">
             <c:set var="error" value="Debes seleccionar al director."/>
+        </c:when>
+        <c:when test="${not dirOK}">
+            <c:set var="error" value="El director seleccionado no es un Director válido o está inactivo."/>
         </c:when>
         <c:when test="${empty docFinal}">
             <c:set var="error" value="Debes indicar la URL (enlace) del documento del anteproyecto."/>

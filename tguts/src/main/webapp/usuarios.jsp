@@ -133,7 +133,9 @@
                     SELECT (SELECT COUNT(*) FROM anteproyectos WHERE estudiante_id = ? OR director_id = ? OR evaluador_id = ?)
                          + (SELECT COUNT(*) FROM ideas WHERE docente_id = ?)
                          + (SELECT COUNT(*) FROM calificaciones WHERE usuario_id = ?)
-                         + (SELECT COUNT(*) FROM tramites WHERE estudiante_id = ? OR resuelto_por = ?) AS n
+                         + (SELECT COUNT(*) FROM tramites WHERE estudiante_id = ? OR resuelto_por = ?)
+                         + (SELECT COUNT(*) FROM entrega_final WHERE revisado_por = ?) AS n
+                    <sql:param value="${param.id}"/>
                     <sql:param value="${param.id}"/>
                     <sql:param value="${param.id}"/>
                     <sql:param value="${param.id}"/>
@@ -144,7 +146,7 @@
                 </sql:query>
                 <c:choose>
                     <c:when test="${qDep.rows[0].n gt 0}">
-                        <c:set var="error" value="No se puede eliminar: el usuario tiene anteproyectos, ideas, calificaciones o trámites asociados."/>
+                        <c:set var="error" value="No se puede eliminar: el usuario tiene anteproyectos, ideas, calificaciones, trámites o revisiones de entrega final asociados."/>
                     </c:when>
                     <c:otherwise>
                         <sql:update dataSource="${ds}">

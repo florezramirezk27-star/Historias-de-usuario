@@ -127,7 +127,7 @@
     <div class="login-caja">
         <img class="login-logo" src="img/images.png" alt="Logo UTS">
         <h1>Trabajos de Grado</h1>
-        <p class="uts">Universidad UTS · Sistema de información</p>
+        <p class="uts">Universitaria Tecnológica de Santander (UTS) · Sistema de información</p>
 
         <c:if test="${not empty errorLogin}">
             <div class="aviso aviso-error"><c:out value="${errorLogin}"/></div>
@@ -149,7 +149,7 @@
         </form>
 
         <div class="credenciales">
-            <b>Cuentas de prueba</b><br>
+            <b>Cuentas de demostración (no son usuarios reales)</b><br>
             Admin: admin@uts.edu.co / admin123<br>
             Coordinación: coord@uts.edu.co / coord123<br>
             Director: director@uts.edu.co / director123<br>

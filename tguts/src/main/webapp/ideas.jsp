@@ -68,6 +68,14 @@
                 <c:redirect url="403.jsp"/>
             </c:when>
             <c:when test="${empty param.titulo}"><c:set var="error" value="El título de la idea es obligatorio."/></c:when>
+            <%-- Cuando administración/coordinación edita, debe elegir el docente
+                 que publica (mismo conjunto de roles que valida el servidor). --%>
+            <c:when test="${(rol eq 'ADMIN' || rol eq 'COORDINACION') && empty param.docente}">
+                <c:set var="error" value="Selecciona el docente que publica la idea."/>
+            </c:when>
+            <c:when test="${(rol eq 'ADMIN' || rol eq 'COORDINACION') && not empty param.docente && not docOK}">
+                <c:set var="error" value="El usuario seleccionado no es un Docente válido (Director/Evaluador) o está inactivo."/>
+            </c:when>
         </c:choose>
         <%-- El director solo puede editar sus propias ideas --%>
         <c:if test="${empty error && rol eq 'DIRECTOR'}">
@@ -81,12 +89,27 @@
             </c:if>
         </c:if>
         <c:if test="${empty error}">
-            <sql:update dataSource="${ds}">
-                UPDATE ideas SET titulo = ?, descripcion = ? WHERE id = ?
-                <sql:param value="${param.titulo}"/>
-                <sql:param value="${param.descripcion}"/>
-                <sql:param value="${param.id}"/>
-            </sql:update>
+            <c:choose>
+                <%-- Administración/coordinación también actualizan el docente publicador --%>
+                <c:when test="${rol eq 'ADMIN' || rol eq 'COORDINACION'}">
+                    <sql:update dataSource="${ds}">
+                        UPDATE ideas SET titulo = ?, descripcion = ?, docente_id = ? WHERE id = ?
+                        <sql:param value="${param.titulo}"/>
+                        <sql:param value="${param.descripcion}"/>
+                        <sql:param value="${param.docente}"/>
+                        <sql:param value="${param.id}"/>
+                    </sql:update>
+                </c:when>
+                <%-- El director conserva la autoría de su idea --%>
+                <c:otherwise>
+                    <sql:update dataSource="${ds}">
+                        UPDATE ideas SET titulo = ?, descripcion = ? WHERE id = ?
+                        <sql:param value="${param.titulo}"/>
+                        <sql:param value="${param.descripcion}"/>
+                        <sql:param value="${param.id}"/>
+                    </sql:update>
+                </c:otherwise>
+            </c:choose>
             <c:redirect url="ideas.jsp?exito=editada"/>
         </c:if>
     </c:if>
@@ -249,7 +272,7 @@
         </sql:query>
         <sql:query dataSource="${ds}" var="qDocentes">
             SELECT id, nombre FROM usuarios
-            WHERE rol IN ('DIRECTOR', 'COORDINACION') AND activo = 1
+            WHERE rol IN ('DIRECTOR', 'EVALUADOR') AND activo = 1
             ORDER BY nombre
         </sql:query>
     </c:otherwise>

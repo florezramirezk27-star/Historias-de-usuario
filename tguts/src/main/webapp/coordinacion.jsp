@@ -70,11 +70,11 @@
         <c:when test="${qPertenece.rowCount eq 0}">
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=no_pertenece"/>
         </c:when>
-        <%-- El director se define antes de su revisión; el evaluador solo se
-             asigna a un anteproyecto aprobado por el director. --%>
-        <c:when test="${dirNuevo ne dirActual && qPertenece.rows[0].estado ne 'BORRADOR' && qPertenece.rows[0].estado ne 'RECHAZADO' && qPertenece.rows[0].estado ne 'ENVIADO'}">
-            <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=director_fuera_flujo"/>
-        </c:when>
+        <%-- Según la diapositiva del comité (Rol Coordinación), coordinación
+             puede "agregar un director a un anteproyecto aprobado". Por eso el
+             director puede asignarse o cambiarse en CUALQUIER estado. El
+             evaluador, en cambio, solo se asigna cuando el anteproyecto está
+             aprobado por el director. --%>
         <c:when test="${evalNuevo ne evalActual && qPertenece.rows[0].estado ne 'APROBADO_DIRECTOR'}">
             <c:redirect url="coordinacion.jsp?accion=ficha&id=${param.estudiante_id}&error=evaluador_fuera_flujo"/>
         </c:when>
@@ -82,7 +82,7 @@
             <sql:transaction dataSource="${ds}">
                 <sql:update>
                     UPDATE anteproyectos
-                    SET director_id = CASE WHEN estado IN ('BORRADOR','RECHAZADO','ENVIADO') THEN NULLIF(?, '') ELSE director_id END,
+                    SET director_id = NULLIF(?, ''),
                         evaluador_id = CASE WHEN estado = 'APROBADO_DIRECTOR' THEN NULLIF(?, '') ELSE evaluador_id END
                     WHERE id = ? AND estudiante_id = ?
                     <sql:param value="${param.director}"/>
@@ -196,7 +196,7 @@
     <div class="aviso aviso-ok">Director y evaluador asignados. Se enviaron las notificaciones (RF-26, RF-37).</div>
 </c:if>
 <c:if test="${param.error eq 'director_fuera_flujo'}">
-    <div class="aviso aviso-error">El director solo puede asignarse antes de que su revisión sea aprobada.</div>
+    <div class="aviso aviso-error">No se pudo asignar el director.</div>
 </c:if>
 <c:if test="${param.error eq 'evaluador_fuera_flujo'}">
     <div class="aviso aviso-error">El evaluador solo puede asignarse cuando el anteproyecto esté aprobado por el director.</div>
@@ -261,7 +261,7 @@
                         <div class="form-fila">
                             <div>
                                 <label for="director">Director</label>
-                                <select id="director" name="director" ${f.estado ne 'BORRADOR' && f.estado ne 'RECHAZADO' && f.estado ne 'ENVIADO' ? 'disabled' : ''}>
+                                <select id="director" name="director">
                                     <option value="">-- Sin asignar --</option>
                                     <c:forEach items="${qDirectores.rows}" var="d">
                                         <option value="${d.id}" ${f.director_id eq d.id ? 'selected' : ''}>
@@ -269,10 +269,7 @@
                                         </option>
                                     </c:forEach>
                                 </select>
-                                <c:if test="${f.estado ne 'BORRADOR' && f.estado ne 'RECHAZADO' && f.estado ne 'ENVIADO'}">
-                                    <input type="hidden" name="director" value="${f.director_id}">
-                                    <small>La dirección queda fijada después de su revisión.</small>
-                                </c:if>
+                                <small>Puede asignarse o cambiarse en cualquier estado, incluso con el anteproyecto aprobado.</small>
                             </div>
                             <div>
                                 <label for="evaluador">Evaluador</label>

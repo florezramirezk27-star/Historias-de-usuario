@@ -193,11 +193,13 @@ INSERT INTO ideas (titulo, descripcion, docente_id, estado) VALUES
 ('Plataforma de prácticas empresariales', 'Web que conecta estudiantes de la UTS con empresas para prácticas.', 3, 'PUBLICADA'),
 ('App de reservas de canchas', 'Aplicación web para reservar canchas deportivas del campus.', 3, 'PUBLICADA');
 
+-- Calendario de DEMOSTRACIÓN: fechas base, no el calendario oficial.
 INSERT INTO calendario (titulo, descripcion, fecha_inicio, fecha_fin, tipo) VALUES
-('Inicio de semestre', 'Primer día de clases del periodo.', '2026-08-10', NULL, 'ACADEMICO'),
-('Fecha límite de anteproyectos', 'Entrega de anteproyectos al director.', '2026-10-30', NULL, 'ENTREGA'),
-('Sustentación de trabajos de grado', 'Jornada de sustentaciones ante comité.', '2026-12-05', '2026-12-10', 'HITO');
+('Inicio de semestre', 'Primer día de clases del periodo (dato de demostración).', '2026-08-10', NULL, 'ACADEMICO'),
+('Fecha límite de anteproyectos', 'Entrega de anteproyectos al director (dato de demostración).', '2026-10-30', NULL, 'ENTREGA'),
+('Sustentación de trabajos de grado', 'Jornada de sustentaciones ante comité (dato de demostración).', '2026-12-05', '2026-12-10', 'HITO');
 
+-- Formatos de DEMOSTRACIÓN: plantillas base, no documentos oficiales.
 INSERT INTO formatos (nombre, descripcion, url) VALUES
-('FDC-124 · Formato de anteproyecto (idea)', 'Formato oficial FDC-124: plantilla para presentar la idea y el anteproyecto del trabajo de grado.', 'formatos/FDC-124-Anteproyecto.pdf'),
-('FDC-125 · Documento final', 'Formato oficial FDC-125: plantilla para el documento final del trabajo de grado.', 'formatos/FDC-125-DocumentoFinal.pdf');
+('FDC-124 · Formato de anteproyecto (idea)', 'Plantilla base FDC-124 (demostración, no oficial): presentar la idea y el anteproyecto del trabajo de grado.', 'formatos/FDC-124-Anteproyecto.pdf'),
+('FDC-125 · Documento final', 'Plantilla base FDC-125 (demostración, no oficial): documento final del trabajo de grado.', 'formatos/FDC-125-DocumentoFinal.pdf');

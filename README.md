@@ -1,6 +1,10 @@
 # Historias-de-usuario
 
-**Sistema de Trabajos de Grado UTS** — Aplicación web desarrollada en **JSP + JSTL** (Maven, empaquetado WAR) sobre una base de datos **MySQL/MariaDB (XAMPP)**.
+**Sistema de Trabajos de Grado — Universitaria Tecnológica de Santander (UTS)** — Aplicación web desarrollada en **JSP + JSTL** (Maven, empaquetado WAR) sobre una base de datos **MySQL/MariaDB (XAMPP)**.
+
+> El nombre institucional de los logos (`img/images.png`, `img/fondologin.jpg`) es
+> **Universitaria Tecnológica de Santander**. El documento y la interfaz usan ese mismo
+> nombre (abreviado **UTS**) para mantener la consistencia.
 
 El sistema gestiona todo el proceso de un trabajo de grado: desde la publicación de ideas por parte de los docentes, el registro y aprobación del anteproyecto, la asignación de director y evaluador, la entrega del documento final, la sustentación y las notificaciones del proceso, además de trámites (retiro, prórroga y beneficios), calendario académico, formatos e informes.
 
@@ -18,14 +22,14 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 | Servidor | Apache Tomcat 9 (Java EE `javax`) |
 | Base de datos | MySQL / MariaDB vía XAMPP |
 | Conexión | JSTL `<sql:setDataSource>` + pool **HikariCP** + MySQL Connector/J 8.3 |
-| Subida de archivos | Apache Commons FileUpload 1.5 / Commons IO 2.15 |
+| Formularios | Apache Commons FileUpload 1.5 / Commons IO 2.15 (parseo de `campos`; los documentos se registran por **URL**, no se suben archivos) |
 | Seguridad | PBKDF2-HMAC-SHA256 (JDK nativo), token CSRF, sesiones con rotación, guardas por rol |
 
 ---
 
 ## Requisitos
 
-- JDK 8 o superior
+- **JDK 17** (el `pom.xml` compila con `maven.compiler.release=17`)
 - Apache Maven 3.6+
 - Apache Tomcat 9
 - XAMPP (MySQL / MariaDB) iniciado
@@ -40,7 +44,7 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
    mysql -uroot < tguts/sql/db_tgd_uts.sql
    ```
 
-   O importar `tguts/sql/db_tgd_uts.sql` desde phpMyAdmin. La base se llama `db_tgd_uts` e incluye datos de prueba.
+   O importar `tguts/sql/db_tgd_uts.sql` desde phpMyAdmin. La base se llama `db_tgd_uts` e incluye **datos de demostración** (usuarios, ideas, calendario y formatos de ejemplo; no son datos oficiales).
 
 2. **Compilar el WAR:**
 
@@ -61,7 +65,9 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 
 ---
 
-## Usuarios de prueba
+## Usuarios de demostración
+
+> Estas cuentas son **datos de demostración**, no usuarios reales de la institución.
 
 | Rol | Correo | Contraseña |
 |---|---|---|
@@ -70,6 +76,7 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 | Director | `director@uts.edu.co` | `director123` |
 | Evaluador | `evaluador@uts.edu.co` | `evaluador123` |
 | Estudiante | `estudiante@uts.edu.co` | `estudiante123` |
+| Estudiante (2.º) | `estudiante2@uts.edu.co` | `estudiante123` |
 
 Las contraseñas de los datos de prueba ya vienen **hasheadas con PBKDF2-HMAC-SHA256**
 (formato `pbkdf2_sha256$120000$<salB64>$<hashB64>`); en la página de login solo se
@@ -99,7 +106,7 @@ muestran como referencia cuando se corre en local (sin variables `DB_HOST` defin
 | `entrega_final.jsp` | Entrega del documento final |
 | `sustentacion.jsp` | Programación y resultado de la sustentación |
 | `calendario.jsp` | Calendario académico |
-| `formatos.jsp` | Formatos oficiales de grado |
+| `formatos.jsp` | Formatos de grado (plantillas base de demostración) |
 | `tramites.jsp` | Retiro, prórroga y beneficios |
 | `notificaciones.jsp` | Notificaciones del proceso |
 | `informes.jsp` | Reportes e informes |
@@ -184,10 +191,9 @@ Todo la lógica de seguridad vive en **archivos JSP/JSTL** (`common/seguridad.js
 - **Autorización por operación:** guarda de sesión (`common/guard.jsp`), guardas de rol,
   de **propiedad** (el anteproyecto pertenece al usuario) y de **estado** en cada UPDATE
   (`AND estado = '...'` / `IN (...)`) para impedir transiciones ilegales o reenvíos.
-- **Documentos híbridos (enlace o archivo):** el archivo se valida (extensión, tipo real
-  por *magic bytes*, máximo 20 MB), se almacena con nombre UUID **fuera** del webapp
-  (directorio `uploadDir/`) y se descarga a través de `descargar.jsp`, que verifica
-  sesión, rol y propiedad, y exige una ruta canónica dentro del directorio.
+- **Documentos por enlace (URL):** el anteproyecto y el documento final se registran
+  mediante una **URL** (`http://`/`https://`); no se suben archivos. `descargar.jsp` se
+  conserva únicamente para compatibilidad con registros antiguos que apunten a un archivo.
 - **Transacciones:** las operaciones compuestas (cambio de estado + notificación) se
   agrupan con `<sql:transaction>`.
 - **Base de datos:** índices en estados/notificaciones y `UNIQUE` en entregas/sustentación;
@@ -257,7 +263,8 @@ Guía detallada: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md).
 
 - Las credenciales de BD se leen de variables de entorno (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) en `src/main/java/edu/uts/PoolInicializador.java`; sin ellas usa XAMPP (`localhost`, `root`, sin contraseña). `common/config.jsp` apunta a ese pool con `dataSource="${applicationScope.ds}"`.
 - El envío real de correos (SMTP) está pendiente; por ahora las notificaciones se registran en la base de datos.
-- Los documentos subidos se guardan en `catalina.base/uploadDir/` (fuera del WAR), por lo que **no se conservan** si se borra el contenedor o el disco efímero de Render. Usa enlaces externos para documentos que deban perdurar, o adjunta un volumen.
+- Los documentos del anteproyecto y del trabajo de grado se registran como **enlaces (URL)**, no como archivos; por eso no dependen del disco del servidor. La subida de archivos se retiró de los formularios y se acordó documentar esta decisión con el profesor.
+- Los contenidos iniciales (usuarios, ideas, calendario y formatos) son **datos de demostración**: se marcan en la interfaz y deben reemplazarse por los oficiales de la institución.
 
 ---
 
