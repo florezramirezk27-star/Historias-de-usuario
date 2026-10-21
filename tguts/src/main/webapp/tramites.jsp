@@ -44,11 +44,12 @@
                 <sql:update>
                     INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
                     SELECT u.id, 'Nueva solicitud de trámite',
-                           CONCAT('El estudiante ${yo.nombre} solicitó un trámite de tipo ', ?, '.'),
+                           CONCAT('El estudiante ', ?, ' solicitó un trámite de tipo ', ?, '.'),
                            'TRAMITE_SOLICITADO',
                            CONCAT('Correo a ', u.email, ' (SMTP pendiente)')
                     FROM usuarios u
                     WHERE u.rol = 'COORDINACION' AND u.activo = 1
+                    <sql:param value="${yo.nombre}"/>
                     <sql:param value="${param.tipo}"/>
                 </sql:update>
             </sql:transaction>

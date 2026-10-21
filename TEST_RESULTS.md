@@ -1,8 +1,8 @@
 # Registro de pruebas reales (E2E)
 
-Fecha de ejecución: **19/10/2026**
-Entorno: **Tomcat 9.0.122 + MySQL 8.0.46** (Docker), WAR compilado con **Maven (JDK 17)**.
-Script de prueba: `pruebas/e2e_tguts.py` (Python 3, librería estándar, sin dependencias externas).
+Fecha de ejecución: **21/10/2026**
+Entorno: **Tomcat 8.5.96 + MySQL 8.0 (XAMPP)**, WAR compilado con **Maven (JDK 21, target 17)**.
+Script de prueba: `pruebas/e2e_local.py` (Python 3, librería estándar, sin dependencias externas).
 Base de datos: `db_tgd_uts` con script `tguts/sql/db_tgd_uts.sql` (datos de demostración).
 
 ---

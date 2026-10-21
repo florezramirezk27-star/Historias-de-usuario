@@ -204,9 +204,22 @@
     }
 
     /**
+     * Guarda el archivo subido que quedó en request.getAttribute("archivo_subido_item")
+     * DESPUÉS de validar sesión y CSRF. Devuelve el nombre almacenado o null si no hay archivo.
+     * Lanza IllegalArgumentException si el archivo no es válido.
+     */
+    static String pgGuardarArchivoValidado(HttpServletRequest req, ServletContext app) {
+        Object itemObj = req.getAttribute("archivo_subido_item");
+        if (!(itemObj instanceof FileItem)) return null;
+        FileItem item = (FileItem) itemObj;
+        return pgGuardar(item, pgUploadDir(app));
+    }
+
+    /**
      * Devuelve los campos del formulario como Map<String,String> y, si la
-     * petición es multipart, guarda el archivo subido y deja en la petición:
-     * "archivo_subido" (nombre almacenado) o "archivo_error" (motivo).
+     * petición es multipart, deja el FileItem en la petición como
+     * "archivo_subido_item" para guardarlo DESPUÉS de validar sesión y CSRF.
+     * NO guarda el archivo automáticamente.
      */
     static Map<String, String> pgCampos(HttpServletRequest req, ServletContext app) {
         Map<String, String> campos = new HashMap<String, String>();
@@ -228,11 +241,8 @@
                 if (item.isFormField()) {
                     campos.put(item.getFieldName(), item.getString("UTF-8"));
                 } else if (item.getSize() > 0) {
-                    try {
-                        req.setAttribute("archivo_subido", pgGuardar(item, pgUploadDir(app)));
-                    } catch (IllegalArgumentException ex) {
-                        req.setAttribute("archivo_error", ex.getMessage());
-                    }
+                    // NO guardamos aquí; dejamos el item para que la página lo guarde tras validar sesión/CSRF
+                    req.setAttribute("archivo_subido_item", item);
                 }
             }
         } catch (FileUploadBase.SizeLimitExceededException ex) {

@@ -622,8 +622,6 @@
         <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION' || rol eq 'DIRECTOR' || rol eq 'ESTUDIANTE'}">
             <a class="btn btn-gris" href="entrega_final.jsp?id=${ant.id}">Ver entrega final</a>
         </c:if>
-    <div class="panel">
-        <h2 style="margin-top:0">Próximos pasos</h2>
         <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION'}">
             <a class="btn btn-verde" href="sustentacion.jsp?id=${ant.id}">Programar sustentación</a>
         </c:if>

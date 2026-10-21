@@ -38,7 +38,7 @@
 
 | Paso | Acción | Resultado esperado |
 |------|--------|--------------------|
-| 3.1 | **Estudiante**: `anteproyecto_form.jsp?id=X` → intentar enviar con director = Coordinación | Error servidor: "El director seleccionado no es un Director válido o está inactivo"; estado sigue `BORRADOR` |
+| 3.1 | **Estudiante**: `anteproyecto_form.jsp?id=X` → modificar petición (p. ej. DevTools) para enviar `director=2` (Coordinación) | Error servidor: "El director seleccionado no es un Director válido o está inactivo"; estado sigue `BORRADOR` |
 | 3.2 | **Estudiante**: mismo formulario → director = Carlos Gómez (Director), URL `https://drive.google.com/...` | Estado cambia a `ENVIADO`; notificación al director |
 | 3.3 | **Director**: `anteproyecto_ver.jsp?id=X` → califica 4.5 / observación "ok" | `calificacion_director=4.5`; fila en `calificaciones` (rol DIRECTOR) |
 | 3.4 | **Director**: "Eliminar calificación" | `calificacion_director=NULL`; historial borrado (transacción con datasource) |
@@ -74,7 +74,7 @@
 | 6.1 | **Estudiante**: `anteproyecto_ver.jsp` (estado `APROBADO_EVALUADOR`) → clic "Entregar documento final" | Formulario con título y URL; al enviar → estado `ENTREGA_DOCUMENTO_FINAL` |
 | 6.2 | **Estudiante**: `anteproyecto_ver.jsp` → enlace "Consultar / corregir mi entrega final" visible | Enlace presente y funcional |
 | 6.3 | **Estudiante**: `entrega_final.jsp?id=X` → ve "Documento entregado" (sin redirección a `anteproyectos.jsp`) | Página carga HTTP 200; muestra título, fecha, estado `ENTREGADO`, enlace al documento |
-| 6.4 | **Coordinación (coord2)**: `entrega_final.jsp?id=X` → "Observado (requiere correcciones)" + observaciones | `entrega_final.estado = OBSERVADO`; `revisado_por = coord2_id` |
+| 6.4 | **Coordinación**: `entrega_final.jsp?id=X` → "Observado (requiere correcciones)" + observaciones | `entrega_final.estado = OBSERVADO`; `revisado_por = coord_id` |
 | 6.5 | **Estudiante**: `entrega_final.jsp?id=X` → ve panel "Corregir y reenviar documento" | Formulario de corrección visible |
 | 6.6 | **Estudiante**: envía corrección con nueva URL | `entrega_final.estado = ENTREGADO`; notificación al director |
 | 6.7 | **Director/Coordinación**: revisa corrección → "Aprobado → pasa a Revisión Final" | `entrega_final.estado = APROBADO`; anteproyecto → `REVISIÓN_FINAL` |
@@ -87,7 +87,7 @@
 |------|--------|--------------------|
 | 7.1 | **Admin/Coord**: `formatos.jsp` → tabla muestra "FDC-124 · Formato de anteproyecto (idea)" | Columna "Archivo": enlace "Abrir formato" con `href="/formatos/FDC-124-Anteproyecto.pdf"` |
 | 7.2 | Clic en "Abrir formato" | PDF se abre/descarga (HTTP 200) |
-| 7.3 | **Admin**: "Actualizar documento" → ingresar ruta relativa `formatos/nuevo.pdf` | Guardado; enlace sigue funcionando |
+| 7.3 | **Admin**: "Actualizar documento" → ingresar URL `https://drive.google.com/...` o ruta relativa `formatos/FDC-124-Anteproyecto.pdf` | Guardado; enlace sigue funcionando |
 | 7.4 | Aviso en página | "Los documentos aquí registrados son **datos de demostración** (plantillas base), no formatos institucionales oficiales." |
 
 ---
@@ -108,7 +108,7 @@
 | 9.1 | `informes.jsp?tipo=estudiantes` | Tabla: estudiante, idea, director, evaluador, estado, fechas |
 | 9.2 | `informes.jsp?tipo=directores` | Tabla: director, n.º proyectos, estados |
 | 9.3 | `informes.jsp?tipo=evaluadores` | Tabla: evaluador, n.º proyectos, estados |
-| 9.4 | `tramites.jsp` → crear retiro / prórroga / beneficio | Inserta en BD; coord puede aprobar/rechazar |
+| 9.4 | `tramites.jsp` (estudiante) → crear retiro / prórroga / beneficio | Inserta en BD; coord puede aprobar/rechazar |
 
 ---
 
@@ -126,8 +126,8 @@
 
 | Paso | Acción (Coord) | Resultado esperado |
 |------|----------------|--------------------|
-| 11.1 | `sustentacion.jsp` (anteproyecto en `REVISIÓN_FINAL`) → programar fecha/lugar | Registro creado; estado anteproyecto → `SUSTENTACIÓN` |
-| 11.2 | Registrar resultado (APROBADO/RECHAZADO + acta URL) | Estado → `FINALIZADO` o vuelve a `REVISIÓN_FINAL` |
+| 11.1 | `sustentacion.jsp` (anteproyecto en `REVISIÓN_FINAL`) → programar fecha/hora/lugar | Registro creado; estado anteproyecto → `SUSTENTACIÓN` |
+| 11.2 | Registrar resultado (APROBADO/RECHAZADO + observaciones) | Si APROBADO: estado → `FINALIZADO`. Si RECHAZADO: estado se mantiene en `SUSTENTACIÓN` (no vuelve a `REVISIÓN_FINAL`). |
 
 ---
 

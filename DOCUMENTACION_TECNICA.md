@@ -55,54 +55,51 @@
 -- Usuarios y autenticación
 CREATE TABLE usuarios (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  nombre VARCHAR(150) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
+  nombre VARCHAR(100) NOT NULL,
+  email VARCHAR(120) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,          -- PBKDF2: pbkdf2_sha256$iter$sal$hash
   rol ENUM('ADMIN','COORDINACION','DIRECTOR','EVALUADOR','ESTUDIANTE') NOT NULL,
-  codigo VARCHAR(30),                      -- código estudiante / nómina docente
-  activo TINYINT(1) DEFAULT 1,
-  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_usuarios_rol_activo (rol, activo)
-);
+  codigo VARCHAR(20) NULL,                 -- solo estudiantes
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
 
 -- Banco de ideas
 CREATE TABLE ideas (
   id INT AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(200) NOT NULL,
-  descripcion TEXT,
+  descripcion TEXT NULL,
   docente_id INT NOT NULL,                 -- FK usuarios (DIRECTOR/EVALUADOR)
-  estado ENUM('PUBLICADA','SELECCIONADA','CERRADA') DEFAULT 'PUBLICADA',
-  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  estado ENUM('PUBLICADA','SELECCIONADA','CERRADA') NOT NULL DEFAULT 'PUBLICADA',
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (docente_id) REFERENCES usuarios(id),
-  INDEX idx_ideas_estado (estado)
+  KEY idx_ideas_estado (estado)
 );
 
 -- Anteproyectos (núcleo del flujo)
 CREATE TABLE anteproyectos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   estudiante_id INT NOT NULL,              -- FK usuarios (ESTUDIANTE)
-  idea_id INT NOT NULL,                    -- FK ideas
+  idea_id INT NULL,                        -- FK ideas
   titulo VARCHAR(200) NOT NULL,
-  director_id INT,                         -- FK usuarios (DIRECTOR)
-  evaluador_id INT,                        -- FK usuarios (EVALUADOR)
-  documento VARCHAR(500),                  -- URL (http/https) o ruta relativa
+  documento VARCHAR(255) NULL,             -- URL (http/https) o ruta relativa
+  director_id INT NULL,                    -- FK usuarios (DIRECTOR)
+  evaluador_id INT NULL,                   -- FK usuarios (EVALUADOR)
   estado ENUM('BORRADOR','ENVIADO','APROBADO_DIRECTOR','APROBADO_EVALUADOR',
               'ENTREGA_DOCUMENTO_FINAL','REVISIÓN_FINAL','SUSTENTACIÓN','FINALIZADO','RECHAZADO')
-       DEFAULT 'BORRADOR',
-  calificacion_director DECIMAL(3,1),
-  observacion_director TEXT,
-  calificacion_evaluador DECIMAL(3,1),
-  observacion_evaluador TEXT,
-  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  actualizado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+       NOT NULL DEFAULT 'BORRADOR',
+  calificacion_director DECIMAL(3,1) NULL,
+  observacion_director TEXT NULL,
+  calificacion_evaluador DECIMAL(3,1) NULL,
+  observacion_evaluador TEXT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  actualizado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (estudiante_id) REFERENCES usuarios(id),
-  FOREIGN KEY (idea_id) REFERENCES ideas(id),
+  FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE SET NULL,
   FOREIGN KEY (director_id) REFERENCES usuarios(id),
   FOREIGN KEY (evaluador_id) REFERENCES usuarios(id),
-  INDEX idx_anteproyectos_estado (estado),
-  INDEX idx_anteproyectos_director (director_id),
-  INDEX idx_anteproyectos_evaluador (evaluador_id),
-  INDEX idx_anteproyectos_estudiante (estudiante_id)
+  UNIQUE KEY uq_anteproyecto_estudiante (estudiante_id),
+  KEY idx_ant_estado (estado)
 );
 
 -- Entrega final (documento de grado)
@@ -110,12 +107,13 @@ CREATE TABLE entrega_final (
   id INT AUTO_INCREMENT PRIMARY KEY,
   anteproyecto_id INT NOT NULL UNIQUE,     -- 1:1 con anteproyecto
   titulo VARCHAR(200) NOT NULL,
-  documento VARCHAR(500) NOT NULL,         -- URL
-  estado ENUM('ENTREGADO','EN_REVISION','OBSERVADO','APROBADO') DEFAULT 'ENTREGADO',
-  observaciones TEXT,
-  revisado_por INT,                        -- FK usuarios (DIR/COORD/ADMIN)
-  fecha_entrega TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id),
+  documento VARCHAR(255) NOT NULL,         -- URL
+  estado ENUM('ENTREGADO','EN_REVISION','OBSERVADO','APROBADO') NOT NULL DEFAULT 'ENTREGADO',
+  observaciones TEXT NULL,
+  revisado_por INT NULL,                   -- FK usuarios (DIR/COORD/ADMIN)
+  fecha_entrega TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id) ON DELETE CASCADE,
   FOREIGN KEY (revisado_por) REFERENCES usuarios(id)
 );
 
@@ -123,11 +121,13 @@ CREATE TABLE entrega_final (
 CREATE TABLE sustentacion (
   id INT AUTO_INCREMENT PRIMARY KEY,
   anteproyecto_id INT NOT NULL UNIQUE,
-  fecha DATETIME NOT NULL,
-  lugar VARCHAR(200),
+  fecha DATE NOT NULL,
+  hora TIME NOT NULL,
+  lugar VARCHAR(200) NOT NULL,
   resultado ENUM('APROBADO','RECHAZADO','PENDIENTE') DEFAULT 'PENDIENTE',
-  acta_url VARCHAR(500),
-  FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id)
+  observaciones TEXT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id) ON DELETE CASCADE
 );
 
 -- Historial de calificaciones (auditoría)
@@ -137,43 +137,42 @@ CREATE TABLE calificaciones (
   usuario_id INT NOT NULL,                 -- quien califica
   rol_calificador ENUM('DIRECTOR','EVALUADOR') NOT NULL,
   calificacion DECIMAL(3,1) NOT NULL,
-  observacion TEXT,
-  fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id),
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-  UNIQUE KEY uk_calif_ant_rol (anteproyecto_id, rol_calificador, usuario_id)
+  observacion TEXT NULL,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (anteproyecto_id) REFERENCES anteproyectos(id) ON DELETE CASCADE,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
 
 -- Notificaciones (eventos del proceso)
 CREATE TABLE notificaciones (
   id INT AUTO_INCREMENT PRIMARY KEY,
   usuario_id INT NOT NULL,
-  titulo VARCHAR(200) NOT NULL,
-  mensaje TEXT NOT NULL,
-  evento VARCHAR(50) NOT NULL,
-  correo_log TEXT,                         -- log de envío SMTP (pendiente)
-  leida TINYINT(1) DEFAULT 0,
-  creada_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  titulo VARCHAR(150) NOT NULL,
+  mensaje VARCHAR(400) NOT NULL,
+  evento VARCHAR(60) NOT NULL,
+  correo_log VARCHAR(400) NULL,           -- log de envío SMTP (pendiente)
+  leido TINYINT(1) NOT NULL DEFAULT 0,
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (usuario_id) REFERENCES usuarios(id),
-  INDEX idx_notif_usuario_leida (usuario_id, leida)
+  KEY idx_notif_usuario_leida (usuario_id, leido)
 );
 
 -- Calendario académico
 CREATE TABLE calendario (
   id INT AUTO_INCREMENT PRIMARY KEY,
   titulo VARCHAR(150) NOT NULL,
-  descripcion TEXT,
+  descripcion VARCHAR(400) NULL,
   fecha_inicio DATE NOT NULL,
-  fecha_fin DATE,
-  tipo ENUM('ACADEMICO','ENTREGA','HITO','OTRO') DEFAULT 'ACADEMICO'
+  fecha_fin DATE NULL,
+  tipo ENUM('ACADEMICO','HITO','ENTREGA','EXAMEN') NOT NULL DEFAULT 'ACADEMICO'
 );
 
 -- Formatos de grado
 CREATE TABLE formatos (
   id INT AUTO_INCREMENT PRIMARY KEY,
   nombre VARCHAR(150) NOT NULL,
-  descripcion TEXT,
-  url VARCHAR(500) NOT NULL                -- http(s)://...  o  formatos/archivo.pdf
+  descripcion VARCHAR(400) NULL,
+  url VARCHAR(300) NOT NULL
 );
 
 -- Trámites (retiro, prórroga, beneficios)
@@ -181,15 +180,14 @@ CREATE TABLE tramites (
   id INT AUTO_INCREMENT PRIMARY KEY,
   estudiante_id INT NOT NULL,
   tipo ENUM('RETIRO','PRORROGA','BENEFICIO') NOT NULL,
-  estado ENUM('SOLICITADO','APROBADO','RECHAZADO') DEFAULT 'SOLICITADO',
-  fecha_inicio DATE,
-  fecha_fin DATE,
-  motivo TEXT,
-  resuelto_por INT,                        -- FK usuarios (COORD/ADMIN)
-  creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  detalle TEXT NOT NULL,
+  estado ENUM('PENDIENTE','APROBADO','RECHAZADO') NOT NULL DEFAULT 'PENDIENTE',
+  respuesta TEXT NULL,
+  resuelto_por INT NULL,                   -- FK usuarios (COORD/ADMIN)
+  creado_en TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (estudiante_id) REFERENCES usuarios(id),
   FOREIGN KEY (resuelto_por) REFERENCES usuarios(id),
-  INDEX idx_tramites_estado (estado)
+  KEY idx_tramites_estado (estado)
 );
 ```
 
@@ -213,7 +211,7 @@ APROBADO_EVALUADOR
 ENTREGA_DOCUMENTO_FINAL
    │  (director/coord revisa: EN_REVISION / OBSERVADO / APROBADO)
    ▼
-REVISIÓN_FINAL  (si APROBADO)  ←── OBSERVADO (estudiante corrige → ENTREGADO → vuelve aquí)
+REVISIÓN_FINAL  (si APROBADO)  ←── OBSERVADO (estudiante corrige → ENTREGADO → vuelve a ENTREGA_DOCUMENTO_FINAL)
    │  (coordinación programa sustentación)
    ▼
 SUSTENTACIÓN
@@ -230,6 +228,8 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 - `AND estado = 'ENTREGA_DOCUMENTO_FINAL'` al revisar/corregir
 - `AND estado = 'REVISIÓN_FINAL'` al programar sustentación
 
+**Limitación conocida:** Si una entrega ya `APROBADA` se cambia a `OBSERVADO`, el anteproyecto permanece en `REVISIÓN_FINAL` (no vuelve a `ENTREGA_DOCUMENTO_FINAL`). El formulario de corrección del estudiante exige `ENTREGA_DOCUMENTO_FINAL`, por lo que esa combinación bloquea la corrección. Ver `entrega_final.jsp` líneas 179-200 y `anteproyecto_ver.jsp` línea 603.
+
 ---
 
 ## 4. Seguridad
@@ -238,10 +238,10 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 |------|----------------|
 | **Contraseñas** | `pgHash()` → PBKDF2-HMAC-SHA256, 120k iteraciones, sal 16 B aleatoria. Formato: `pbkdf2_sha256$120000$<salB64>$<hashB64>`. Migración automática de SHA-256 heredado en primer login (`pgNecesitaMigrar`). |
 | **Sesiones** | Rotación de ID en `login.jsp` (`invalidate()` + `getSession(true)`). Timeout 30 min (`web.xml`). Cookie `HttpOnly`, `SameSite=Lax` (`context.xml`). `tracking-mode=COOKIE`. |
-| **CSRF** | Token por sesión (`common/csrf.jsp`). `<input name="csrf_token" value="${csrfToken}">` en todos los formularios. `common/verify_csrf.jsp` valida en **todo POST** (usa Map `campos` de `config.jsp`, compatible con `multipart`). |
+| **CSRF** | Token por sesión (`common/csrf.jsp`). `<input name="csrf_token" value="${csrfToken}">` en todos los formularios. `common/verify_csrf.jsp` valida en **todo POST** (usa Map `campos` de `config.jsp`, compatible con `multipart`). **Nota:** El procesamiento `multipart` en `pgCampos` guarda el archivo antes de validar sesión/CSRF; mover validación antes de `pgCampos` en próxima iteración. |
 | **Autorización** | `common/guard.jsp` → `sessionScope.usuario` y `rol`. Guardas por página (`rol eq '...'`), por propiedad (`estudiante_id = yo.id`, `director_id = yo.id`, etc.) y por estado (`AND estado = '...'`). |
 | **Documentos** | **Solo URL** (`http://`/`https://`). Validación servidor (`fn:startsWith`). Subida de archivos retirada de formularios; `descargar.jsp` conservado para compatibilidad (valida sesión, rol, propiedad, ruta canónica). |
-| **Inyección SQL** | Parámetros vinculados (`<sql:param>`) en todas las consultas JSTL. |
+| **Inyección SQL** | Parámetros vinculados (`<sql:param>`) en consultas JSTL. Excepción conocida: `tramites.jsp` usa `CONCAT` con expresión EL en notificación (línea 47); corregir en próxima iteración. |
 | **XSS** | Salida con `<c:out>` / `fn:escapeXml` en todos los datos dinámicos. |
 
 ---
@@ -250,7 +250,7 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 
 | Tema | Decisión | Justificación / Acuerdo |
 |------|----------|-------------------------|
-| **Subida de archivos** | Retirada; solo URL | Acordado con profesor: "dejar solo URL y documentar". Infraestructura legacy conservada. |
+| **Subida de archivos** | Retirada; solo URL | Decisión de implementación pendiente de validar con el profesor. La diapositiva indica "subir anteproyectos". Infraestructura legacy conservada. |
 | **Asignación de director** | Permitida en **todos los estados** | Diapositiva del profesor: "Agregar un director a un anteproyecto aprobado". |
 | **Formato de documentos** | URL `http(s)` o ruta relativa `formatos/...` | BD ya trae rutas locales; JSP las convierte en enlaces con `c:url`. |
 | **Banco de ideas – docente** | Roles `DIRECTOR` y `EVALUADOR` (no COORDINACION) | Alineado con validación servidor existente. |

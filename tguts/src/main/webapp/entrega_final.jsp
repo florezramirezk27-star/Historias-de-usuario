@@ -200,6 +200,14 @@
                     </sql:update>
                 </c:if>
 
+                <c:if test="${campos.estado_nuevo eq 'OBSERVADO' && filasEntrega gt 0 && ant.estado eq 'REVISIÓN_FINAL'}">
+                    <sql:update>
+                        UPDATE anteproyectos SET estado = 'ENTREGA_DOCUMENTO_FINAL'
+                        WHERE id = ? AND estado = 'REVISIÓN_FINAL'
+                        <sql:param value="${ant.id}"/>
+                    </sql:update>
+                </c:if>
+
                 <c:if test="${filasEntrega gt 0}">
                     <sql:update>
                         INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
