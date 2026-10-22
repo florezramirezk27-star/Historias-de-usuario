@@ -26,6 +26,38 @@
 
 ---
 
+## Recorrido de la demostración (cinco roles)
+
+Durante la sustentación mostramos el recorrido de un anteproyecto por los cinco roles. La demostración comienza con el registro de usuarios y termina con la consulta de la calificación. En la tabla indicamos qué haremos, el resultado esperado, la explicación de cada paso y los requisitos que cubre.
+
+| N° | Rol | Procedimiento | Resultado esperado | Explicación | Requisitos |
+|---|---|---|---|---|---|
+| 1 | Administrador | Abrimos el sistema e iniciamos sesión con la cuenta de administrador. | El sistema permite el ingreso y muestra solo las opciones del administrador. | «Primero ingresamos como administrador, que es el encargado de gestionar los usuarios». | RF-01, RF-02, RF-03 |
+| 2 | Administrador | Entramos a Usuarios y seleccionamos "Agregar usuario". Registramos un estudiante (con código de matrícula), un director y un evaluador con nombre, correo, contraseña y rol. | Los tres usuarios aparecen en la lista "Usuarios registrados". | «Creamos estas tres cuentas para mostrar cómo participa cada rol en el proceso». | RF-04, RF-05, RF-06 |
+| 3 | Director | Cerramos sesión e ingresamos como director. En el banco de ideas publicamos «Sistema de gestión de inventarios». | La idea queda publicada y disponible para los estudiantes. | «Desde este módulo el docente publica las ideas que podrán elegir los estudiantes». | RF-09, RF-10 |
+| 4 | Estudiante | Ingresamos como estudiante, buscamos la idea en el banco de ideas y la seleccionamos. | La idea queda asociada al estudiante y se crea su anteproyecto en estado `BORRADOR`. | «El estudiante revisa las ideas disponibles y selecciona la que quiere desarrollar». | RF-10, RF-11, RF-12, RF-13 |
+| 5 | Estudiante | Abrimos "Mi anteproyecto" → "Nuevo anteproyecto". Completamos título y director, **registramos el enlace (URL)** del documento y lo enviamos con "Guardar y enviar al director". | El anteproyecto queda `ENVIADO` y muestra el estudiante, el director, el enlace del documento y el estado. El evaluador aparece como "sin asignar" hasta que el director apruebe. | «Aquí el estudiante registra el anteproyecto, adjunta el enlace del documento y consulta quiénes lo revisan y en qué estado está». | RF-14, RF-15, RF-16 |
+| 6 | Director | Ingresamos como director, abrimos Anteproyectos y seleccionamos el del estudiante. | Se muestran el estudiante, su código, el proyecto, el enlace del documento y el estado. | «El director abre el anteproyecto y revisa tanto el documento como los datos del estudiante». | RF-17, RF-18 |
+| 7 | Director | Registramos la calificación ("Guardar calificación") y seleccionamos "Aprobar para el evaluador". | El estado pasa a `APROBADO_DIRECTOR`; el sistema asigna un evaluador y el anteproyecto aparece en su cuenta. | «Guardamos la calificación y aprobamos el anteproyecto para que lo reciba el evaluador». | RF-19, RF-20, RF-35 |
+| 8 | Evaluador | Ingresamos como evaluador y abrimos Anteproyectos. | Aparece el anteproyecto aprobado por el director. | «El anteproyecto ya aparece en la cuenta del evaluador después de la aprobación del director». | RF-21 |
+| 9 | Evaluador | Revisamos la información, registramos la calificación y seleccionamos "Aprobar anteproyecto" (sin calificar, el sistema no permite aprobar). | El sistema registra la aprobación, actualiza el estado a `APROBADO_EVALUADOR` y notifica al estudiante y a la coordinación. | «El evaluador revisa el anteproyecto y deja registrada su aprobación». | RF-22, RF-23, RF-24, RF-35 |
+| 10 | Coordinación | Ingresamos como coordinación, buscamos al estudiante por nombre o por código y abrimos su ficha. | Se muestran el estudiante, el proyecto, el director, el evaluador y el estado. | «Coordinación busca al estudiante y consulta la información de su proyecto». | RF-27, RF-28 |
+| 11 | Coordinación | Abrimos Informes y consultamos por estudiante, por director y por evaluador. | El sistema muestra las tres tablas de estado. | «También podemos consultar los informes de estado por estudiante, director y evaluador». | RF-29, RF-30, RF-31 |
+| 12 | Estudiante | Volvemos a ingresar como estudiante y abrimos el anteproyecto en "Mi anteproyecto". | Se muestran las calificaciones del director y del evaluador, el historial y el estado de aprobación. | «Por último, volvemos a la cuenta del estudiante para consultar la nota y el estado de su anteproyecto». | RF-34, RF-35 |
+
+> Los pasos 1 a 12 son el recorrido mínimo de la sustentación. La continuación (13 a 18) cubre la entrega del documento final y la sustentación, y se muestra si el tiempo lo permite.
+
+| N° | Rol | Procedimiento | Resultado esperado | Explicación | Requisitos |
+|---|---|---|---|---|---|
+| 13 | Estudiante | Con el anteproyecto `APROBADO_EVALUADOR` abrimos "Entregar documento final", escribimos el título y la URL, y confirmamos. | El anteproyecto pasa a `ENTREGA_DOCUMENTO_FINAL` y la entrega queda `ENTREGADO`. | «El estudiante entrega el documento final mediante un enlace». | RF-36 |
+| 14 | Director / Coordinación | Abrimos `entrega_final.jsp` del proyecto → "Revisar documento final" → "Observado (requiere correcciones)" + observaciones → "Guardar revisión". | La entrega queda `OBSERVADO` y el estudiante ve el panel "Corregir y reenviar documento". | «El revisor devuelve el documento con observaciones para que el estudiante lo corrija». | RF-41, RF-37 |
+| 15 | Estudiante | Escribimos la nueva URL y seleccionamos "Enviar corrección". | La entrega vuelve a `ENTREGADO` y se notifica al director. | «El estudiante corrige y reenvía el documento». | RF-36, RF-37 |
+| 16 | Director / Coordinación | Revisamos la corrección → "Aprobado → pasa a Revisión Final". | La entrega queda `APROBADO` y el anteproyecto pasa a `REVISIÓN_FINAL`. | «Al aprobar la corrección, el trabajo entra en revisión final». | RF-41 |
+| 17 | Coordinación | Abrimos `sustentacion.jsp` → "Programar sustentación" con fecha, hora y lugar. | Se registra la sustentación y el anteproyecto pasa a `SUSTENTACIÓN`. | «La coordinación programa la fecha de la sustentación». | RF-42 |
+| 18 | Director / Evaluador | Registramos el resultado de la sustentación como `APROBADO`. | El anteproyecto pasa a `FINALIZADO` y el estudiante consulta el resultado. | «Con el resultado aprobado, el proyecto queda finalizado». | RF-43, RF-34 |
+
+---
+
 ## 1. Acceso, sesión y roles (RF-01, RF-02, RF-03 · RNF-02, RNF-03)
 
 | Paso | Acción (rol) | Resultado esperado verificado |
@@ -359,7 +391,7 @@
 |---|---|
 | Alcance / entorno | Secciones 0 y 19 |
 | Requisitos funcionales | Sección 16 (tabla RF-01…RF-43) |
-| Guion de demostración | Secciones 1 a 15 (todas en tablas) |
+| Guion de demostración | "Recorrido de la demostración" (pasos 1 a 18) + secciones 1 a 15 (todas en tablas) |
 | Casos de error y validaciones | Sección 17 |
 | Verificación / checklist | Sección 18 |
 | Pruebas | `TEST_RESULTS.md` + `pruebas/salida_e2e_local.txt` |
