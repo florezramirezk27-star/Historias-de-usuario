@@ -19,8 +19,8 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 |---|---|
 | Lenguaje de vistas | JSP + JSTL 1.2 |
 | Empaquetado | Maven (WAR) |
-| Servidor | Apache Tomcat 9 (Java EE `javax`) |
-| Base de datos | MySQL / MariaDB vía XAMPP |
+| Servidor | Apache Tomcat 9 (Java EE `javax`); **verificado también en Tomcat 8.5.96** de XAMPP |
+| Base de datos | MySQL / MariaDB vía XAMPP (**verificado en MariaDB 10.4.32**) |
 | Conexión | JSTL `<sql:setDataSource>` + pool **HikariCP** + MySQL Connector/J 8.3 |
 | Formularios | Apache Commons FileUpload 1.5 / Commons IO 2.15 (parseo de `campos`; los documentos se registran por **URL**, no se suben archivos) |
 | Seguridad | PBKDF2-HMAC-SHA256 (JDK nativo), token CSRF, sesiones con rotación, guardas por rol |
@@ -29,9 +29,9 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 
 ## Requisitos
 
-- **JDK 17** (el `pom.xml` compila con `maven.compiler.release=17`)
+- **JDK 17 o superior** (el `pom.xml` compila con `maven.compiler.release=17`; la build verificada se hizo con **JDK 21**)
 - Apache Maven 3.6+
-- Apache Tomcat 9
+- Apache Tomcat 9 (o Tomcat 8.5 de XAMPP, que es el entorno en el que se ejecutaron las pruebas)
 - XAMPP (MySQL / MariaDB) iniciado
 
 ---
@@ -62,6 +62,16 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
    ```
    http://localhost:8080/tguts/
    ```
+
+### Entorno verificado en las pruebas
+
+| Componente | Versión / ruta |
+|---|---|
+| Servlet container | **Apache Tomcat 8.5.96** — `C:\xampp\tomcat` |
+| Base de datos | **MariaDB 10.4.32** — `C:\xampp\mysql\bin\mysql.exe` (root, sin contraseña), puerto 3306 |
+| Aplicación | `http://localhost:8080/tguts/` (contexto WAR `tguts`) |
+| Build | Maven con JDK 21 → `maven.compiler.release=17` |
+| Despliegue automatizado | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` |
 
 ---
 
@@ -112,6 +122,34 @@ muestran como referencia cuando se corre en local (sin variables `DB_HOST` defin
 | `informes.jsp` | Reportes e informes |
 | `coordinacion.jsp` | Panel de coordinación |
 
+### Catálogo de requisitos funcionales (RF-01 … RF-43)
+
+| RF | Requisito | RF | Requisito |
+|---|---|---|---|
+| RF-01 | Autenticación de usuarios | RF-23 | Aprobar/rechazar el anteproyecto (evaluador) |
+| RF-02 | Validación de credenciales y sesión | RF-24 | Notificar la evaluación al estudiante y a la coordinación |
+| RF-03 | Panel inicial y menú según el rol | RF-25 | Gestión (CRUD) de ideas por administración/coordinación |
+| RF-04 | Crear usuarios | RF-26 | Asignar director y evaluador (coordinación) |
+| RF-05 | Consultar la ficha de un usuario | RF-27 | Buscar estudiantes por nombre, código o correo |
+| RF-06 | Listar los usuarios registrados | RF-28 | Ficha del estudiante y de su proyecto |
+| RF-07 | Editar usuarios | RF-29 | Informe de estado por estudiante |
+| RF-08 | Eliminar usuarios (con control de dependencias) | RF-30 | Informe de estado por director |
+| RF-09 | Publicar una idea de trabajo de grado | RF-31 | Informe de estado por evaluador |
+| RF-10 | Consultar el banco de ideas | RF-32 | Calendario académico (consulta y CRUD) |
+| RF-11 | Seleccionar una idea | RF-33 | Formatos de grado (consulta y CRUD) |
+| RF-12 | Un solo anteproyecto por estudiante | RF-34 | Consulta del estado y de la sustentación por el estudiante |
+| RF-13 | Crear el anteproyecto al seleccionar la idea | RF-35 | Historial de calificaciones |
+| RF-14 | Registrar y editar la información del anteproyecto | RF-36 | Entrega del documento final por URL |
+| RF-15 | Consultar el anteproyecto propio | RF-37 | Notificaciones del proceso |
+| RF-16 | Enviar el anteproyecto al director | RF-38 | Solicitud de retiro del proyecto |
+| RF-17 | Ver los anteproyectos asignados como director | RF-39 | Solicitud de prórroga |
+| RF-18 | Consultar el detalle del anteproyecto | RF-40 | Solicitud de beneficio |
+| RF-19 | Calificar el anteproyecto (director) | RF-41 | Revisión del documento final (observar / revisar / aprobar) |
+| RF-20 | Aprobar/rechazar el anteproyecto (director) | RF-42 | Programar la sustentación |
+| RF-21 | Ver los anteproyectos aprobados (evaluador) | RF-43 | Registrar el resultado de la sustentación |
+| RF-22 | Calificar el anteproyecto (evaluador) | RNF-02 | Control de acceso por rol (menú y guardas de página) |
+| | | RNF-03 | Control de propiedad (cada rol solo ve sus datos) |
+
 ---
 
 ## Flujo del anteproyecto
@@ -127,12 +165,27 @@ BORRADOR → ENVIADO → APROBADO_DIRECTOR → APROBADO_EVALUADOR
 
 ```
 parcia_2jstl/
-├── README.md              # Documentación
+├── README.md              # Documentación e historias de usuario
+├── DOCUMENTACION_TECNICA.md  # Arquitectura, esquema BD, seguridad y decisiones
+├── GUION.md               # Guion de demostración paso a paso (todo en tablas)
+├── TEST_RESULTS.md        # Registro de pruebas E2E con evidencia real
 ├── DEPLOY_RENDER.md       # Guía de despliegue en Render
 ├── Dockerfile             # Imagen Tomcat 9 + WAR (Render)
 ├── render.yaml            # Blueprint de despliegue en Render
 ├── .dockerignore
 ├── .gitignore
+├── pruebas/
+│   ├── e2e_core.py        # Suite E2E: 99 casos (bloques A–O), Python stdlib
+│   ├── e2e_local.py       # Ejecutor local (XAMPP) → guarda salida_e2e_local.txt
+│   ├── e2e_tguts.py       # Ejecutor equivalente para Docker (puerto 18080)
+│   ├── desplegar_local.ps1# mvn package → copia el WAR → reinicia Tomcat → health check
+│   └── salida_e2e_local.txt # Evidencia de la última ejecución real (99/99)
+├── docs/
+│   ├── generar_informe.py # Genera el documento final consolidado (.docx)
+│   ├── verificar_informe.py
+│   ├── Sistema_Trabajos_de_Grado_UTS.docx  # Documento final (42 páginas)
+│   └── Sistema_Trabajos_de_Grado_UTS.pdf   # Versión PDF del documento final
+├── Sistema_Trabajos_de_Grado_UTS.zip       # Paquete con el documento y las fuentes
 └── tguts/
     ├── pom.xml            # Configuración Maven (WAR)
     ├── sql/
@@ -259,38 +312,68 @@ Guía detallada: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md).
 
 ---
 
+## Documento final del proyecto
+
+| Archivo | Contenido |
+|---|---|
+| `docs/Sistema_Trabajos_de_Grado_UTS.docx` | Documento final consolidado (42 páginas): introducción, objetivos, marco referencial, catálogo RF-01…RF-43 y RNF-01…RNF-10, reglas de negocio, 28 historias de usuario, modelo de datos, arquitectura, seguridad, plan de trabajo, guion de demostración, registro de las 99 pruebas, despliegue, conclusiones y anexos |
+| `docs/Sistema_Trabajos_de_Grado_UTS.pdf` | Versión PDF del mismo documento (índice actualizado con números de página) |
+| `Sistema_Trabajos_de_Grado_UTS.zip` | Paquete con el documento (.docx y .pdf) y las fuentes del proyecto (documentación, suite de pruebas, evidencia y SQL) |
+| `docs/generar_informe.py` | Script que regenera el documento a partir de `README.md`, `GUION.md`, `TEST_RESULTS.md`, `DOCUMENTACION_TECNICA.md` y la evidencia real de las pruebas |
+
+```bash
+python docs\generar_informe.py     # regenera el .docx y el .zip
+```
+
+---
+
 ## Notas
 
 - Las credenciales de BD se leen de variables de entorno (`DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`) en `src/main/java/edu/uts/PoolInicializador.java`; sin ellas usa XAMPP (`localhost`, `root`, sin contraseña). `common/config.jsp` apunta a ese pool con `dataSource="${applicationScope.ds}"`.
 - El envío real de correos (SMTP) está pendiente; por ahora las notificaciones se registran en la base de datos.
 - Los documentos del anteproyecto y del trabajo de grado se registran como **enlaces (URL)**, no como archivos; por eso no dependen del disco del servidor. La subida de archivos se retiró de los formularios y se acordó documentar esta decisión con el profesor.
 - Los contenidos iniciales (usuarios, ideas, calendario y formatos) son **datos de demostración**: se marcan en la interfaz y deben reemplazarse por los oficiales de la institución.
+- La **revisión del documento final** solo está disponible en los estados `ENTREGA_DOCUMENTO_FINAL` y `REVISIÓN_FINAL`; en `SUSTENTACIÓN` y `FINALIZADO` el documento está cerrado y la revisión queda bloqueada. Observar el documento desde `REVISIÓN_FINAL` devuelve el trabajo a `ENTREGA_DOCUMENTO_FINAL` para que el estudiante pueda corregirlo.
+- El **calendario** y los **formatos** admiten alta, consulta, edición y borrado por parte de administración y coordinación; todos los usuarios autenticados pueden consultarlos.
 
 ---
 
-## Pruebas end-to-end con Docker (local)
+## Pruebas end-to-end (método ejecutado: XAMPP local)
+
+**Resultado real de la última ejecución: 99/99 APROBADOS (66,9 s) el 22/10/2026.**
+Evidencia completa en [`pruebas/salida_e2e_local.txt`](pruebas/salida_e2e_local.txt) y detalle caso por caso en [`TEST_RESULTS.md`](TEST_RESULTS.md).
+
+| Paso | Comando | Detalle |
+|---|---|---|
+| 1 | MySQL/MariaDB de XAMPP en `localhost:3306` | Base `db_tgd_uts` creada con `tguts/sql/db_tgd_uts.sql` |
+| 2 | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` | `mvn clean package` → copia `tguts.war` a `C:\xampp\tomcat\webapps\` → reinicia Tomcat → espera el health check de `http://localhost:8080/tguts/login.jsp` |
+| 3 | `python pruebas\e2e_local.py` | Ejecuta los 99 casos y guarda la salida en `pruebas/salida_e2e_local.txt` |
+| 4 | Resultado | `===== RESUMEN: 99/99 APROBADOS =====` |
+
+La suite (`pruebas/e2e_core.py`) cubre 15 bloques: **A** acceso/sesión/CSRF/roles · **B** CRUD de usuarios · **C** CRUD del banco de ideas · **D** alta, edición, envío y borrado del anteproyecto · **E** calificación y aprobación del director · **F** búsqueda de estudiantes por nombre, código y correo · **G** asignación de director y evaluador · **H** evaluación del evaluador · **I** los tres informes · **J** entrega del documento final, corrección, revisión, sustentación y finalización · **K** CRUD del calendario · **L** CRUD de formatos · **M** trámites · **N** notificaciones · **O** limpieza final.
+
+La suite **crea sus propias cuentas** (`e2e-<rol>@uts.edu.co`) y las elimina al terminar, de modo que los datos de demostración de la tabla de arriba quedan intactos (lo comprueba el caso O-01). Solo usa la **librería estándar de Python** (`urllib`, `http.cookiejar`, `subprocess`).
+
+### Alternativa documentada: Docker (puerto 18080)
 
 ```bash
 # 1) Imagen de MySQL con el esquema
 docker network create tguts_net
 docker run -d --name tguts_mysql --network tguts_net \
-  -e MYSQL_ROOT_PASSWORD=rootpw \
+  -e MYSQL_ROOT_PASSWORD=rootpw -e MYSQL_DATABASE=db_tgd_uts \
   -v "%CD%\tguts\sql\db_tgd_uts.sql:/docker-entrypoint-initdb.d/01.sql:ro" \
-  mysql:8
+  mysql:8.0
 
 # 2) Compilar y desplegar Tomcat 9
 cd tguts && mvn -B clean package
 docker run -d --name tguts_tomcat --network tguts_net -p 18080:8080 \
   -e DB_HOST=tguts_mysql -e DB_PORT=3306 -e DB_NAME=db_tgd_uts \
   -e DB_USER=root -e DB_PASSWORD=rootpw \
-  -v "%CD%\target\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" \
+  -v "%CD%\tguts\target\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" \
   tomcat:9.0-jdk17-temurin
 
-# 3) Abrir
-#    http://localhost:18080/
+# 3) Ejecutar la misma suite contra ese contenedor
+python pruebas\e2e_tguts.py
 ```
 
-El resultado reproducible de construcción y la matriz de pruebas manuales están en
-[`TEST_RESULTS.md`](TEST_RESULTS.md). La validación completa de punta a punta requiere
-ejecutar la aplicación con Tomcat y MySQL; no debe declararse como realizada sin conservar
-el resultado de esos casos.
+> Esta variante es **una alternativa documentada, no ejecutada** en la versión actual: la evidencia real se obtuvo con el entorno local XAMPP descrito arriba. Cualquier afirmación de pruebas solo debe hacerse conservando la salida de la ejecución.

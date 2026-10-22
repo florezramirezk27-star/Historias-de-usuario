@@ -1,6 +1,6 @@
 # Documentación técnica — Sistema de Trabajos de Grado UTS
 
-**Versión:** 1.0 (19/10/2026)
+**Versión:** 2.0 (22/10/2026) — describe el código verificado con **99/99 pruebas E2E aprobadas** (`pruebas/salida_e2e_local.txt`).
 **Alcance:** Arquitectura, flujo de datos, seguridad, esquema BD, decisiones de diseño y operación.
 
 ---
@@ -222,13 +222,21 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 
 **Guardas de transición (en cada UPDATE):**
 - `AND estado IN ('BORRADOR','RECHAZADO')` al enviar
-- `AND estado = 'ENVIADO'` al calificar director
-- `AND estado = 'APROBADO_DIRECTOR'` al calificar evaluador
-- `AND estado = 'APROBADO_EVALUADOR'` al crear entrega
-- `AND estado = 'ENTREGA_DOCUMENTO_FINAL'` al revisar/corregir
-- `AND estado = 'REVISIÓN_FINAL'` al programar sustentación
+- `AND estado = 'ENVIADO'` al calificar el director
+- `AND estado = 'APROBADO_DIRECTOR'` al calificar el evaluador
+- `AND estado = 'APROBADO_EVALUADOR'` al crear la entrega final
+- `AND estado = 'ENTREGA_DOCUMENTO_FINAL'` al corregir una entrega observada
+- `AND estado = 'REVISIÓN_FINAL'` al programar la sustentación
 
-**Limitación conocida:** Si una entrega ya `APROBADA` se cambia a `OBSERVADO`, el anteproyecto permanece en `REVISIÓN_FINAL` (no vuelve a `ENTREGA_DOCUMENTO_FINAL`). El formulario de corrección del estudiante exige `ENTREGA_DOCUMENTO_FINAL`, por lo que esa combinación bloquea la corrección. Ver `entrega_final.jsp` líneas 179-200 y `anteproyecto_ver.jsp` línea 603.
+**Ciclo de corrección del documento final (resuelto en esta versión):**
+
+| Situación | Regla aplicada | Resultado |
+|---|---|---|
+| Entrega `OBSERVADO` o `EN_REVISION` mientras el trabajo está en `REVISIÓN_FINAL` | El anteproyecto **vuelve a `ENTREGA_DOCUMENTO_FINAL`** | El estudiante siempre puede corregir y reenviar |
+| Revisión del documento en `SUSTENTACIÓN` o `FINALIZADO` | La revisión se **bloquea** (guarda por estado en el POST) y el formulario se oculta con el aviso "El documento final ya está cerrado…" | El documento no puede quedar observado sin posiblidad de corrección |
+| Aprobación de la entrega (`APROBADO`) en `ENTREGA_DOCUMENTO_FINAL` | El anteproyecto pasa a `REVISIÓN_FINAL` | Habilita la programación de la sustentación |
+
+> Esta regla sustituye la *limitación conocida* de la versión 1.0, en la que una entrega observada desde `REVISIÓN_FINAL` dejaba al estudiante sin formulario de corrección. Ahora está verificado por los casos **J-08, J-09, J-10, J-12, J-13 y J-16** de la suite E2E.
 
 ---
 
@@ -240,9 +248,9 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 | **Sesiones** | Rotación de ID en `login.jsp` (`invalidate()` + `getSession(true)`). Timeout 30 min (`web.xml`). Cookie `HttpOnly`, `SameSite=Lax` (`context.xml`). `tracking-mode=COOKIE`. |
 | **CSRF** | Token por sesión (`common/csrf.jsp`). `<input name="csrf_token" value="${csrfToken}">` en todos los formularios. `common/verify_csrf.jsp` valida en **todo POST** (usa Map `campos` de `config.jsp`, compatible con `multipart`). **Nota:** El procesamiento `multipart` en `pgCampos` guarda el archivo antes de validar sesión/CSRF; mover validación antes de `pgCampos` en próxima iteración. |
 | **Autorización** | `common/guard.jsp` → `sessionScope.usuario` y `rol`. Guardas por página (`rol eq '...'`), por propiedad (`estudiante_id = yo.id`, `director_id = yo.id`, etc.) y por estado (`AND estado = '...'`). |
-| **Documentos** | **Solo URL** (`http://`/`https://`). Validación servidor (`fn:startsWith`). Subida de archivos retirada de formularios; `descargar.jsp` conservado para compatibilidad (valida sesión, rol, propiedad, ruta canónica). |
+| **Documentos** | **Solo URL** (`http://`/`https://`) o ruta relativa segura (`formatos/...`). Validación servidor (`fn:startsWith`) y rama de ruta relativa que rechaza cualquier valor con `:`. Subida de archivos retirada de formularios; `descargar.jsp` conservado para compatibilidad (valida sesión, rol, propiedad, ruta canónica). |
 | **Inyección SQL** | Parámetros vinculados (`<sql:param>`) en consultas JSTL. Excepción conocida: `tramites.jsp` usa `CONCAT` con expresión EL en notificación (línea 47); corregir en próxima iteración. |
-| **XSS** | Salida con `<c:out>` / `fn:escapeXml` en todos los datos dinámicos. |
+| **XSS** | Salida con `<c:out>` / `fn:escapeXml` en todos los datos dinámicos. En `formatos.jsp` la URL del documento se escapa **antes** de construir el `href` (`href="${fn:escapeXml(fmtUrl)}"`), lo que cierra la inyección de HTML en ese enlace (caso E2E L-05). |
 
 ---
 
@@ -256,13 +264,26 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 | **Banco de ideas – docente** | Roles `DIRECTOR` y `EVALUADOR` (no COORDINACION) | Alineado con validación servidor existente. |
 | **Datos de prueba** | Marcados como **demostración** | Avisos en UI (`login.jsp`, `formatos.jsp`, `calendario.jsp`), comentarios en SQL, nota en README. |
 | **Nombre institucional** | "Universitaria Tecnológica de Santander (UTS)" | OCR de logos (`images.png`, `fondologin.jpg`). Corregido "Universidad UTS". |
-| **JDK** | 17 (pom.xml `maven.compiler.release=17`) | README actualizado (antes decía JDK 8). |
+| **JDK** | 17 (pom.xml `maven.compiler.release=17`) | README actualizado (antes decía JDK 8); la build verificada se hizo con JDK 21. |
+| **CRUD de calendario y formatos** | Consulta abierta a cualquier usuario autenticado; alta, edición y borrado solo para ADMIN/COORDINACIÓN | Coherente con el resto de módulos y con la verificación E2E (K-01…K-05, L-01…L-06). |
+| **Búsqueda en coordinación** | Un único campo que busca por **nombre, código de matrícula o correo** | El enunciado del parcial pide la búsqueda por nombre y código; el correo se añadió por comodidad (casos F-01…F-04). |
+| **Asignación de evaluador** | Solo es posible tras la aprobación del director | Evita asignar evaluación a un anteproyecto que todavía no tiene Avalúo de director (caso G-04). |
+| **Alcance de las pruebas** | Suite E2E propia con cuentas `e2e-*` y restauración final de la base | Garantiza que los datos de demostración no se alteran al ejecutar las pruebas (caso O-01). |
 
 ---
 
 ## 6. Despliegue
 
-### Local (Docker)
+### Local con XAMPP (entorno verificado en las pruebas)
+
+| Paso | Acción | Detalle |
+|---|---|---|
+| 1 | Base de datos | `C:\xampp\mysql\bin\mysql.exe -uroot -e "source tguts/sql/db_tgd_uts.sql"` → base `db_tgd_uts` |
+| 2 | Compilar y desplegar | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` (compila el WAR, lo copia a `C:\xampp\tomcat\webapps\`, reinicia Tomcat y espera el health check) |
+| 3 | Acceso | `http://localhost:8080/tguts/` — Tomcat **8.5.96**, MariaDB **10.4.32** |
+| 4 | Pruebas | `python pruebas\e2e_local.py` → 99/99 APROBADOS (evidencia en `pruebas/salida_e2e_local.txt`) |
+
+### Local con Docker (alternativa documentada, no ejecutada en esta versión)
 ```bash
 docker network create tguts_net
 docker run -d --name tguts-mysql --network tguts_net \
@@ -278,6 +299,7 @@ docker run -d --name tguts-tomcat --network tguts_net -p 18080:8080 \
   tomcat:9.0-jdk17-temurin
 ```
 Acceso: `http://localhost:18080/`
+Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apuntando al puerto 18080).
 
 ### Render (cloud)
 - `Dockerfile`: multi-stage (Maven build → Tomcat 9 JDK 17).
@@ -289,16 +311,36 @@ Acceso: `http://localhost:18080/`
 
 ## 7. Pruebas automatizadas (E2E)
 
-**Script:** `pruebas/e2e_tguts.py` (Python 3, stdlib).
-- Usa `urllib` + `http.cookiejar` + `subprocess` (docker exec mysql).
-- 19 casos cubriendo los 10 pendientes + flujos completos.
-- Evidencia real: códigos HTTP, URLs finales, consultas BD, fragmentos HTML.
+**Suite:** `pruebas/e2e_core.py` — **99 casos** en 15 bloques (A–O), Python 3 con **solo librería estándar** (`urllib`, `http.cookiejar`, `subprocess`).
 
-**Ejecutar:**
-```bash
-python pruebas/e2e_tguts.py
-# → 19/19 APROBADOS (ver TEST_RESULTS.md)
-```
+| Bloque | Cobertura | Casos |
+|---|---|---|
+| A | Acceso, sesión, CSRF y guardas por rol | A-01 … A-12 |
+| B | CRUD de usuarios (crear, editar, listar, borrar, dependencias) | B-01 … B-09 |
+| C | CRUD del banco de ideas (publicar, editar, cerrar, eliminar, seleccionar) | C-01 … C-07 |
+| D | Anteproyecto del estudiante (selección, envío, validaciones, borrado, propiedad) | D-01 … D-10 |
+| E | Dirección: calificar, eliminar calificación, aprobar, rechazar, corrección del estudiante | E-01 … E-07 |
+| F | Búsqueda de estudiantes por nombre, código y correo; ficha del estudiante | F-01 … F-05 |
+| G | Asignación de director y evaluador (rol y estado validados) | G-01 … G-05 |
+| H | Evaluación del evaluador (calificar, borrar, aprobar, notificar) | H-01 … H-04 |
+| I | Los tres informes de estado (columnas exactas y contenido real) | I-01 … I-04 |
+| J | Entrega del documento final, corrección, revisión, sustentación y finalización | J-01 … J-17 |
+| K | Calendario académico (alta, edición, borrado, permisos) | K-01 … K-05 |
+| L | Formatos de grado (alta, actualización, borrado, escapado del HTML) | L-01 … L-06 |
+| M | Trámites (solicitud, respuesta, idempotencia, propiedad) | M-01 … M-04 |
+| N | Notificaciones (eventos registrados, bandeja, notificación al director) | N-01 … N-03 |
+| O | Limpieza final: la base vuelve al estado previo | O-01 |
+
+**Ejecutores (envuelven la misma suite):**
+
+| Script | Entorno | Resultado |
+|---|---|---|
+| `pruebas/e2e_local.py` | XAMPP: Tomcat 8.5.96 + MariaDB 10.4.32, `http://localhost:8080/tguts` | **99/99 APROBADOS** (66,9 s) el 22/10/2026; guarda la salida en `pruebas/salida_e2e_local.txt` |
+| `pruebas/e2e_tguts.py` | Docker: Tomcat 9 + MySQL 8, `http://localhost:18080` | Alternativa documentada (no ejecutada en esta versión) |
+
+**Aislamiento:** la suite crea sus propias cuentas `e2e-<rol>@uts.edu.co`, limpia lo que dejó ejecuciones anteriores y borra todo al terminar; el caso O-01 verifica que los **datos de demostración quedan intactos** (6 usuarios, 3 ideas, 2 formatos, 3 eventos, 0 anteproyectos).
+
+**Evidencia:** códigos HTTP, URLs finales, cabeceras `<th>` de cada tabla, fragmentos de HTML y consultas SQL a la base de datos. El detalle caso por caso está en `TEST_RESULTS.md` y la salida íntegra en `pruebas/salida_e2e_local.txt`.
 
 ---
 
@@ -306,11 +348,14 @@ python pruebas/e2e_tguts.py
 
 | Tarea | Comando / Acción |
 |-------|------------------|
+| Reconstruir y redeployar (local XAMPP) | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` |
 | Reconstruir WAR | `cd tguts && mvn clean package` |
-| Actualizar BD (migración seguridad) | `mysql -u... < tguts/sql/migracion_seguridad.sql` |
-| Ver logs Tomcat | `docker logs tguts-tomcat` |
-| Ver logs MySQL | `docker logs tguts-mysql` |
-| Backup BD | `docker exec tguts-mysql mysqldump -uroot -prootpw db_tgd_uts > backup.sql` |
+| Actualizar BD (migración seguridad) | `mysql -u... < tguts/sql/migracion_seguridad.sql` (en PowerShell: `cmd /c "mysql -uroot < tguts\sql\migracion_seguridad.sql"`) |
+| Consultar la BD del entorno local | `C:\xampp\mysql\bin\mysql.exe -uroot -N -B --default-character-set=utf8mb4 db_tgd_uts -e "<sql>"` |
+| Ver logs Tomcat (local) | `C:\xampp\tomcat\logs\catalina.<fecha>.log` |
+| Ver logs Tomcat (Docker) | `docker logs tguts-tomcat` |
+| Ver logs MySQL (Docker) | `docker logs tguts-mysql` |
+| Backup BD (Docker) | `docker exec tguts-mysql mysqldump -uroot -prootpw db_tgd_uts > backup.sql` |
 | Rotar contraseña PBKDF2 | Cambiar `PBKDF2_ITERATIONS` en entorno; hashes se migran en login. |
 
 ---
@@ -320,8 +365,10 @@ python pruebas/e2e_tguts.py
 1. **SMTP pendiente:** `correo_log` en `notificaciones` y `tramites` solo registra texto; no hay envío real.
 2. **Archivos subidos (legacy):** `descargar.jsp` sirve archivos de `uploadDir/` (fuera del WAR). En contenedores efímeros (Render) **no persisten**; usar URLs externas.
 3. **Calendario / Formatos iniciales:** Son plantillas/fechas de demostración. Deben reemplazarse por los oficiales antes de producción.
-4. **Sin tests unitarios Java:** Solo `PoolInicializador` (clase única). La lógica está en JSP; pruebas funcionales vía E2E.
+4. **Sin tests unitarios Java:** Solo `PoolInicializador` (clase única). La lógica está en JSP; las pruebas son funcionales E2E (99 casos).
 5. **Concurrencia:** `<sql:transaction>` serializa en BD; no hay bloqueo optimista en capa JSP.
+6. **Expresión EL dentro de `CONCAT` en `tramites.jsp`:** el `INSERT` de la notificación concatena una expresión JSTL en el `VALUES` (línea ~47). Es un punto a parametrizar en la próxima iteración.
+7. **Procesamiento `multipart` antes de la validación:** `common/config.jsp` prepara el Map `campos` (y `pgCampos` guarda el archivo) antes de `common/verify_csrf.jsp`; en la interfaz actual los formularios ya no suben archivos, por lo que el riesgo es residual.
 
 ---
 
@@ -329,10 +376,14 @@ python pruebas/e2e_tguts.py
 
 | Documento | Contenido |
 |-----------|-----------|
-| `README.md` | Puesta en marcha, usuarios, despliegue, notas |
-| `TEST_RESULTS.md` | Registro de pruebas E2E (19/19) con evidencia |
-| `GUION.md` | Guion de demostración paso a paso (tablas) |
+| `README.md` | Puesta en marcha, usuarios, catálogo RF-01…RF-43, despliegue, notas |
+| `TEST_RESULTS.md` | Registro de pruebas E2E (99/99) con evidencia y detalle de los bugs corregidos |
+| `GUION.md` | Guion de demostración paso a paso (todo en tablas) |
 | `DEPLOY_RENDER.md` | Guía detallada de despliegue en Render |
 | `tguts/sql/db_tgd_uts.sql` | Esquema completo + datos de demostración |
 | `tguts/sql/migracion_seguridad.sql` | Migración de bases existentes (hashes, índices) |
-| `pruebas/e2e_tguts.py` | Script de pruebas end-to-end reproducible |
+| `pruebas/e2e_core.py` | Suite de pruebas end-to-end (99 casos, bloques A–O) |
+| `pruebas/e2e_local.py` | Ejecutor local (XAMPP) que guarda `salida_e2e_local.txt` |
+| `pruebas/e2e_tguts.py` | Ejecutor equivalente para Docker (puerto 18080) |
+| `pruebas/desplegar_local.ps1` | Reconstrucción, redespliegue y health check en Tomcat de XAMPP |
+| `pruebas/salida_e2e_local.txt` | Evidencia de la última ejecución real (22/10/2026) |

@@ -2,9 +2,9 @@
      sustentacion.jsp - Acto de sustentación pública
      Flujo: tras REVISIÓN_FINAL → SUSTENTACIÓN → FINALIZADO
      Roles:
-       - Coordinación/Administrador: programa la sustentación (fecha, hora, lugar)
-       - Director/Evaluador: registran resultado
-       - Estudiante: consulta fecha/lugar/resultado
+       - Coordinación/Administrador: programa la sustentación (fecha, hora, lugar)  (RF-42)
+       - Director/Evaluador: registran resultado                                   (RF-43)
+       - Estudiante: consulta fecha/lugar/resultado                                 (RF-34)
      ========================================================== --%>
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core" %>
@@ -75,6 +75,7 @@
 
 <%-- Procesar POST programar (coordinación/administrador) --%>
 <c:if test="${pageContext.request.method eq 'POST' && param.accion eq 'programar'}">
+    <%-- Programar la sustentación (RF-42) --%>
     <%@ include file="common/verify_csrf.jsp" %>
     <c:if test="${rol ne 'ADMIN' && rol ne 'COORDINACION'}">
         <c:redirect url="403.jsp"/>
@@ -163,6 +164,7 @@
 
 <%-- Procesar POST registrar resultado (director/evaluador/coordinación) --%>
 <c:if test="${pageContext.request.method eq 'POST' && param.accion eq 'resultado'}">
+    <%-- Registrar el resultado de la sustentación (RF-43) --%>
     <%@ include file="common/verify_csrf.jsp" %>
     <c:if test="${rol ne 'ADMIN' && rol ne 'COORDINACION' && rol ne 'DIRECTOR' && rol ne 'EVALUADOR'}">
         <c:redirect url="403.jsp"/>
@@ -228,6 +230,7 @@
 <%@ include file="common/header.jsp" %>
 
 <h1>Sustentación</h1>
+<p class="subtitulo">Acto de sustentación: programación (RF-42) y registro del resultado (RF-43).</p>
 <p class="subtitulo">Anteproyecto: <c:out value="${ant.titulo}"/> — Estado: <c:set var="est" value="${ant.estado}"/><span class="estado estado-${est}"><%@ include file="common/estado.jsp" %></span></p>
 
 <c:if test="${param.exito eq 'programada'}">

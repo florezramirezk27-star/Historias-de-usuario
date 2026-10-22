@@ -2,8 +2,8 @@
      entrega_final.jsp - Entrega del documento final
      Flujo: tras APROBADO_EVALUADOR → ENTREGA_DOCUMENTO_FINAL
      Roles:
-       - Estudiante: registra el documento final (solo por URL/enlace)
-       - Director/Coordinación: revisan y aprueban/observan
+       - Estudiante: registra el documento final (solo por URL/enlace)  (RF-36)
+       - Director/Coordinación: revisan y aprueban/observan             (RF-41)
        - Evaluador: consulta
      Los documentos se referencian por URL; common/config.jsp expone los
      campos del formulario en el Map "campos".
@@ -110,6 +110,7 @@
 
 <%-- Procesar POST crear entrega (estudiante registra archivo o URL) --%>
 <c:if test="${pageContext.request.method eq 'POST' && campos.accion eq 'crear'}">
+    <%-- Entregar el documento final (RF-36) --%>
     <%@ include file="common/verify_csrf.jsp" %>
     <c:if test="${rol ne 'ESTUDIANTE'}">
         <c:redirect url="403.jsp"/>
@@ -165,6 +166,7 @@
 
 <%-- Procesar POST revisar (director/coordinación) --%>
 <c:if test="${pageContext.request.method eq 'POST' && campos.accion eq 'revisar'}">
+    <%-- Revisar el documento final: observar / poner en revisión / aprobar (RF-41) --%>
     <%@ include file="common/verify_csrf.jsp" %>
     <c:if test="${rol ne 'ADMIN' && rol ne 'COORDINACION' && rol ne 'DIRECTOR'}">
         <c:redirect url="403.jsp"/>
@@ -179,6 +181,14 @@
         <c:when test="${empty entrega || entrega.id ne campos.entrega_id}">
             <c:set var="error" value="La entrega indicada no pertenece a este anteproyecto."/>
         </c:when>
+        <%-- La revisión del documento final solo tiene sentido mientras el
+             trabajo está en revisión del documento o en Revisión Final.
+             En estados posteriores (Sustentación / Finalizado) el documento
+             ya está cerrado: se bloquea la modificación para que la entrega
+             no quede en OBSERVADO sin que el estudiante pueda corregir. --%>
+        <c:when test="${ant.estado ne 'ENTREGA_DOCUMENTO_FINAL' && ant.estado ne 'REVISIÓN_FINAL'}">
+            <c:set var="error" value="La revisión del documento final solo está disponible en los estados «Entrega Documento Final» y «Revisión Final». En el estado actual no se puede modificar la entrega."/>
+        </c:when>
         <c:otherwise>
             <sql:transaction dataSource="${ds}">
                 <sql:update var="filasEntrega">
@@ -192,6 +202,8 @@
                     <sql:param value="${ant.id}"/>
                 </sql:update>
 
+                <%-- APROBADO: el documento cierra la revisión y el
+                     anteproyecto pasa a REVISIÓN_FINAL (sustentación). --%>
                 <c:if test="${campos.estado_nuevo eq 'APROBADO' && filasEntrega gt 0}">
                     <sql:update>
                         UPDATE anteproyectos SET estado = 'REVISIÓN_FINAL'
@@ -200,7 +212,11 @@
                     </sql:update>
                 </c:if>
 
-                <c:if test="${campos.estado_nuevo eq 'OBSERVADO' && filasEntrega gt 0 && ant.estado eq 'REVISIÓN_FINAL'}">
+                <%-- OBSERVADO o EN REVISIÓN: si el trabajo ya estaba en
+                     Revisión Final, vuelve a «Entrega Documento Final» para
+                     que el estudiante pueda corregir y reenviar. Así la
+                     corrección nunca queda bloqueada por un estado tardío. --%>
+                <c:if test="${(campos.estado_nuevo eq 'OBSERVADO' || campos.estado_nuevo eq 'EN_REVISION') && filasEntrega gt 0}">
                     <sql:update>
                         UPDATE anteproyectos SET estado = 'ENTREGA_DOCUMENTO_FINAL'
                         WHERE id = ? AND estado = 'REVISIÓN_FINAL'
@@ -322,6 +338,10 @@
         </c:if>
 
         <c:if test="${rol eq 'ADMIN' || rol eq 'COORDINACION' || rol eq 'DIRECTOR'}">
+            <c:choose>
+                <%-- La revisión está habilitada solo en los estados en los que
+                     el documento sigue abierto a cambios. --%>
+                <c:when test="${ant.estado eq 'ENTREGA_DOCUMENTO_FINAL' || ant.estado eq 'REVISIÓN_FINAL'}">
             <div class="panel">
                 <h2 style="margin-top:0">Revisar documento final</h2>
                 <form method="post" action="entrega_final.jsp?id=${param.id}">
@@ -340,6 +360,14 @@
                     <button class="btn btn-verde" type="submit">Guardar revisión</button>
                 </form>
             </div>
+                </c:when>
+                <c:otherwise>
+                    <div class="aviso aviso-info">
+                        El documento final ya está cerrado: la revisión solo puede modificarse
+                        en los estados «Entrega Documento Final» y «Revisión Final».
+                    </div>
+                </c:otherwise>
+            </c:choose>
         </c:if>
     </c:otherwise>
 </c:choose>

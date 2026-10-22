@@ -68,6 +68,21 @@
                 </c:otherwise>
             </c:choose>
         </c:when>
+        <%-- Eliminar un formato registrado (RF-33) --%>
+        <c:when test="${param.accion eq 'eliminar'}">
+            <c:choose>
+                <c:when test="${empty param.id}">
+                    <c:redirect url="formatos.jsp"/>
+                </c:when>
+                <c:otherwise>
+                    <sql:update dataSource="${ds}">
+                        DELETE FROM formatos WHERE id = ?
+                        <sql:param value="${param.id}"/>
+                    </sql:update>
+                    <c:redirect url="formatos.jsp?exito=eliminado"/>
+                </c:otherwise>
+            </c:choose>
+        </c:when>
     </c:choose>
 </c:if>
 
@@ -90,6 +105,9 @@
 </c:if>
 <c:if test="${param.exito eq 'actualizado'}">
     <div class="aviso aviso-ok">Documento del formato actualizado. El enlace ahora apunta a la nueva URL.</div>
+</c:if>
+<c:if test="${param.exito eq 'eliminado'}">
+    <div class="aviso aviso-ok">Formato eliminado.</div>
 </c:if>
 <c:if test="${not empty error}">
     <div class="aviso aviso-error"><c:out value="${error}"/></div>
@@ -143,10 +161,14 @@
                             <a class="enlace-doc" href="${fn:escapeXml(f.url)}" target="_blank" rel="noopener">Abrir formato</a>
                         </c:when>
                         <%-- Ruta relativa dentro de la aplicación (documentos base
-                             de formatos, p. ej. formatos/FDC-124-Anteproyecto.pdf). --%>
-                        <c:when test="${not fn:startsWith(f.url, '/') && not fn:contains(f.url, '..')}">
+                             de formatos, p. ej. formatos/FDC-124-Anteproyecto.pdf).
+                             Se valida igual que al guardar: sin barra inicial,
+                             sin ".." y sin esquema. --%>
+                        <c:when test="${not fn:startsWith(f.url, '/') && not fn:contains(f.url, '..') && not fn:contains(f.url, ':')}">
                             <c:url value="/${f.url}" var="fmtUrl"/>
-                            <a class="enlace-doc" href="${fmtUrl}" target="_blank" rel="noopener">Abrir formato</a>
+                            <%-- El enlace se escapa: el valor viene de la base de
+                                 datos y no debe poder romper el atributo href. --%>
+                            <a class="enlace-doc" href="${fn:escapeXml(fmtUrl)}" target="_blank" rel="noopener">Abrir formato</a>
                         </c:when>
                         <c:otherwise>
                             <c:out value="${f.url}"/>
@@ -169,6 +191,13 @@
                             </div>
                             <button class="btn btn-mini btn-verde" type="submit"
                                     onclick="return confirm('¿Reemplazar el documento de este formato?')">Guardar</button>
+                        </form>
+                        <form method="post" action="formatos.jsp" style="margin:6px 0 0 0;"
+                              onsubmit="return confirm('¿Eliminar este formato del sistema?')">
+                            <input type="hidden" name="csrf_token" value="${csrfToken}">
+                            <input type="hidden" name="accion" value="eliminar">
+                            <input type="hidden" name="id" value="${f.id}">
+                            <button class="btn btn-mini btn-rojo" type="submit">Eliminar formato</button>
                         </form>
                     </td>
                 </c:if>
