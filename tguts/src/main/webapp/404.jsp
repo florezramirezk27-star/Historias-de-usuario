@@ -8,7 +8,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Página no encontrada</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 <div class="login-cuerpo">

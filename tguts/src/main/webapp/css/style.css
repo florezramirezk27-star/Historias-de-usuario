@@ -261,23 +261,24 @@ textarea { min-height: 90px; }
     border-radius: 10px;
     font-size: 12px;
     font-weight: 600;
-    color: #fff;
-    background: var(--gris); /* fondo por defecto: evita texto blanco sobre blanco */
+    color: #334155;                 /* letra oscura: nunca blanca */
+    background: #e2e8f0;            /* fondo claro por defecto */
+    border: 1px solid rgba(0, 0, 0, .12);
 }
-.estado-BORRADOR, .estado-PENDIENTE { background: #5b6b7d; }
-.estado-ENVIADO { background: #b45309; }
-.estado-APROBADO_DIRECTOR { background: #157a42; }
-.estado-APROBADO_EVALUADOR, .estado-APROBADO, .estado-PUBLICADA { background: #1a7f4b; }
-.estado-RECHAZADO, .estado-RECHAZADA { background: var(--rojo); }
-.estado-SELECCIONADA { background: #7c3aed; }
-.estado-CERRADA { background: #444; }
-.estado-ENTREGA_DOCUMENTO_FINAL { background: #1d4ed8; }
-.estado-EN_REVISION { background: #0e7490; }
-.estado-REVISI\00d3N_FINAL { background: #0e7490; }
-.estado-SUSTENTACI\00d3N { background: #0f766e; }
-.estado-FINALIZADO { background: #14532d; }
-.estado-ENTREGADO { background: #b45309; }
-.estado-OBSERVADO { background: var(--rojo); }
+.estado-BORRADOR, .estado-PENDIENTE { background: #e2e8f0; color: #334155; }
+.estado-ENVIADO { background: #fef3c7; color: #92400e; }
+.estado-APROBADO_DIRECTOR { background: #d1fae5; color: #065f46; }
+.estado-APROBADO_EVALUADOR, .estado-APROBADO, .estado-PUBLICADA { background: #d1fae5; color: #065f46; }
+.estado-RECHAZADO, .estado-RECHAZADA { background: #fee2e2; color: #991b1b; }
+.estado-SELECCIONADA { background: #ede9fe; color: #5b21b6; }
+.estado-CERRADA { background: #e5e7eb; color: #374151; }
+.estado-ENTREGA_DOCUMENTO_FINAL { background: #dbeafe; color: #1e40af; }
+.estado-EN_REVISION { background: #cffafe; color: #155e75; }
+.estado-REVISI\00d3N_FINAL { background: #cffafe; color: #155e75; }
+.estado-SUSTENTACI\00d3N { background: #ccfbf1; color: #115e59; }
+.estado-FINALIZADO { background: #a7f3d0; color: #064e3b; }
+.estado-ENTREGADO { background: #fef3c7; color: #92400e; }
+.estado-OBSERVADO { background: #fee2e2; color: #991b1b; }
 
 .aviso { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
 .aviso-ok { background: #e2f6e9; border: 1px solid #b7e4c7; color: #176b3c; }

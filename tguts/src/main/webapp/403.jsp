@@ -10,7 +10,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Acceso denegado</title>
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/style.css?v=6">
 </head>
 <body>
 <div class="login-cuerpo">
