@@ -305,7 +305,7 @@
             <p class="dato"><b>Fecha de entrega:</b> <fmt:formatDate value="${entrega.fecha_entrega}" pattern="dd/MM/yyyy HH:mm"/></p>
             <p class="dato"><b>Estado:</b>
                 <c:set var="est" value="${entrega.estado}"/>
-                <span class="estado estado-${entrega.estado}"><c:out value="${est}"/></span>
+                <span class="estado estado-${est}"><%@ include file="common/estado.jsp" %></span>
             </p>
             <p class="dato"><b>Documento:</b>
                 <c:choose>

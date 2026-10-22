@@ -134,7 +134,7 @@ h2 { font-size: 17px; margin: 22px 0 10px; color: var(--azul); }
     flex: 1;
 }
 .tarjeta .numero { font-size: 26px; font-weight: 700; color: var(--azul-claro); }
-.tarjeta .etiqueta { color: var(--gris); font-size: 13px; }
+.tarjeta .etiqueta { color: #4b5563; font-size: 13px; }
 
 .panel {
     background: #fff;
@@ -262,14 +262,22 @@ textarea { min-height: 90px; }
     font-size: 12px;
     font-weight: 600;
     color: #fff;
+    background: var(--gris); /* fondo por defecto: evita texto blanco sobre blanco */
 }
-.estado-BORRADOR, .estado-PENDIENTE { background: var(--gris); }
-.estado-ENVIADO { background: var(--naranja); }
-.estado-APROBADO_DIRECTOR { background: var(--azul-claro); }
-.estado-APROBADO_EVALUADOR, .estado-APROBADO, .estado-PUBLICADA { background: var(--verde); }
+.estado-BORRADOR, .estado-PENDIENTE { background: #5b6b7d; }
+.estado-ENVIADO { background: #b45309; }
+.estado-APROBADO_DIRECTOR { background: #157a42; }
+.estado-APROBADO_EVALUADOR, .estado-APROBADO, .estado-PUBLICADA { background: #1a7f4b; }
 .estado-RECHAZADO, .estado-RECHAZADA { background: var(--rojo); }
 .estado-SELECCIONADA { background: #7c3aed; }
 .estado-CERRADA { background: #444; }
+.estado-ENTREGA_DOCUMENTO_FINAL { background: #1d4ed8; }
+.estado-EN_REVISION { background: #0e7490; }
+.estado-REVISI\00d3N_FINAL { background: #0e7490; }
+.estado-SUSTENTACI\00d3N { background: #0f766e; }
+.estado-FINALIZADO { background: #14532d; }
+.estado-ENTREGADO { background: #b45309; }
+.estado-OBSERVADO { background: var(--rojo); }
 
 .aviso { padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; font-size: 14px; }
 .aviso-ok { background: #e2f6e9; border: 1px solid #b7e4c7; color: #176b3c; }
