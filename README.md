@@ -340,7 +340,7 @@ python docs\generar_informe.py     # regenera el .docx y el .zip
 
 ## Pruebas end-to-end (método ejecutado: XAMPP local)
 
-**Resultado real de la última ejecución: 99/99 APROBADOS (66,9 s) el 22/10/2026.**
+**Resultado real de la última ejecución: 99/99 APROBADOS (66,2 s) el 22/10/2026.**
 Evidencia completa en [`pruebas/salida_e2e_local.txt`](pruebas/salida_e2e_local.txt) y detalle caso por caso en [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
 | Paso | Comando | Detalle |

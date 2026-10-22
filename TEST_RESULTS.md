@@ -1,10 +1,10 @@
 # Registro de pruebas reales (E2E)
 
-**Resultado de la última ejecución real: 99/99 APROBADOS (66,9 s).**
+**Resultado de la última ejecución real: 99/99 APROBADOS (66,2 s).**
 
 | Dato | Valor |
 |---|---|
-| Fecha de ejecución | **22/10/2026 09:20:56** |
+| Fecha de ejecución | **22/10/2026 09:49:39** |
 | Aplicación probada | `http://localhost:8080/tguts` (contexto WAR `tguts`) |
 | Servidor | **Apache Tomcat 8.5.96** (instalación de XAMPP en `C:\xampp\tomcat`) |
 | Base de datos | **MariaDB 10.4.32 / MySQL** de XAMPP, puerto 3306, base `db_tgd_uts` (`tguts/sql/db_tgd_uts.sql`) |
@@ -249,7 +249,7 @@
 | 1 | MySQL/MariaDB de XAMPP encendido en `localhost:3306` | Base `db_tgd_uts` creada con `tguts/sql/db_tgd_uts.sql` (6 usuarios, 3 ideas, 2 formatos, 3 eventos) |
 | 2 | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` | Compila el WAR con Maven, lo copia a `C:\xampp\tomcat\webapps\tguts.war`, reinicia Tomcat y espera a que `http://localhost:8080/tguts/login.jsp` responda HTTP 200 |
 | 3 | `python pruebas\e2e_local.py` | Ejecuta los 99 casos y **guarda la salida completa en `pruebas/salida_e2e_local.txt`** |
-| 4 | Resultado de la ejecución | **99/99 APROBADOS en 66,9 s** — fecha 22/10/2026 09:20:56 |
+| 4 | Resultado de la ejecución | **99/99 APROBADOS en 66,2 s** — fecha 22/10/2026 09:49:39 |
 
 ### Alternativa documentada (Docker, no ejecutada en esta versión)
 
@@ -296,7 +296,7 @@
 | Casos ejecutados | **99** |
 | Casos aprobados | **99** |
 | Casos fallidos | **0** |
-| Duración | 66,9 s |
+| Duración | 66,2 s |
 | Evidencia conservada | `pruebas/salida_e2e_local.txt` (salida íntegra de la ejecución del 22/10/2026) |
 | Flujo completo cubierto | Login → ideas → anteproyecto → calificación y aprobación del director → evaluación y aprobación del evaluador → entrega del documento final → observación y corrección → aprobación → sustentación programada → resultado → `FINALIZADO` |
 | Integridad de la base | Verificada por el caso O-01 |

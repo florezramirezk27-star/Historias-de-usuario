@@ -335,7 +335,7 @@ Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apunt
 
 | Script | Entorno | Resultado |
 |---|---|---|
-| `pruebas/e2e_local.py` | XAMPP: Tomcat 8.5.96 + MariaDB 10.4.32, `http://localhost:8080/tguts` | **99/99 APROBADOS** (66,9 s) el 22/10/2026; guarda la salida en `pruebas/salida_e2e_local.txt` |
+| `pruebas/e2e_local.py` | XAMPP: Tomcat 8.5.96 + MariaDB 10.4.32, `http://localhost:8080/tguts` | **99/99 APROBADOS** (66,2 s) el 22/10/2026; guarda la salida en `pruebas/salida_e2e_local.txt` |
 | `pruebas/e2e_tguts.py` | Docker: Tomcat 9 + MySQL 8, `http://localhost:18080` | Alternativa documentada (no ejecutada en esta versión) |
 
 **Aislamiento:** la suite crea sus propias cuentas `e2e-<rol>@uts.edu.co`, limpia lo que dejó ejecuciones anteriores y borra todo al terminar; el caso O-01 verifica que los **datos de demostración quedan intactos** (6 usuarios, 3 ideas, 2 formatos, 3 eventos, 0 anteproyectos).

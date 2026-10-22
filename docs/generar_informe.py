@@ -850,21 +850,21 @@ OBSERVADO (documento final) --->  el estudiante corrige y reenvía""")
             tam=10)
     titulo(doc, "9.2 Entorno de ejecución", 2)
     agregar_tabla(doc, ["Elemento", "Detalle"], [
-        ("Fecha de la ejecución", "22/10/2026 09:20:56"),
+        ("Fecha de la ejecución", "22/10/2026 09:49:39"),
         ("Aplicación probada", "http://localhost:8080/tguts (contexto WAR `tguts`)"),
         ("Servidor de aplicaciones", "Apache Tomcat 8.5.96 (XAMPP, `C:\\xampp\\tomcat`)"),
         ("Base de datos", "MariaDB 10.4.32 (XAMPP, puerto 3306), base `db_tgd_uts`"),
         ("Compilación", "Maven con JDK 21, `maven.compiler.release=17`"),
         ("Script", "`pruebas/e2e_local.py` + `pruebas/e2e_core.py` (Python 3, solo librería estándar)"),
         ("Evidencia", "`pruebas/salida_e2e_local.txt` (salida íntegra de la ejecución)"),
-        ("Resultado", "99/99 APROBADOS en 66,9 s"),
+        ("Resultado", "99/99 APROBADOS en 66,2 s"),
     ], tam=9.5)
     titulo(doc, "9.3 Resultado global", 2)
     agregar_tabla(doc, ["Indicador", "Valor"], [
         ("Casos ejecutados", "99"),
         ("Casos aprobados", "99"),
         ("Casos fallidos", "0"),
-        ("Duración de la suite", "66,9 segundos"),
+        ("Duración de la suite", "66,2 segundos"),
         ("Cobertura funcional", "Login y seguridad · usuarios · ideas · anteproyecto · dirección · búsqueda · asignación · evaluación · informes · entrega final y sustentación · calendario · formatos · trámites · notificaciones · limpieza"),
         ("Integridad de los datos", "Verificada por el caso O-01: la base queda con 6 usuarios, 3 ideas, 2 formatos, 3 eventos y 0 anteproyectos"),
         ("Evidencia conservada", "`pruebas/salida_e2e_local.txt`"),
