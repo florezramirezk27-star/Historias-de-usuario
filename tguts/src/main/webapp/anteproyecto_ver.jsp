@@ -351,6 +351,40 @@
             </c:otherwise>
         </c:choose>
     </c:if>
+
+    <%-- ---------- EVALUADOR: REPROBAR (devuelve al estudiante para
+         corregir y volver a presentar el documento) ---------- --%>
+    <c:if test="${param.accion eq 'rechazar_eval'}">
+        <c:if test="${rol ne 'EVALUADOR'}"><c:redirect url="403.jsp"/></c:if>
+        <c:choose>
+            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
+            </c:when>
+            <c:otherwise>
+                <sql:update dataSource="${ds}">
+                    UPDATE anteproyectos
+                    SET estado = 'RECHAZADO', observacion_evaluador = ?
+                    WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
+                    <sql:param value="${param.observacion}"/>
+                    <sql:param value="${ant.id}"/>
+                    <sql:param value="${yo.id}"/>
+                </sql:update>
+                <%-- Notificación al estudiante (RF-37): debe corregir y
+                     volver a presentar su anteproyecto. --%>
+                <sql:update dataSource="${ds}">
+                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                    SELECT estudiante_id, 'Anteproyecto reprobado por el evaluador',
+                           CONCAT('Tu anteproyecto: ', titulo, ' fue reprobado por el evaluador. Revisa las observaciones, corrígelo y vuelve a presentarlo.'),
+                           'ANTEPROYECTO_RECHAZADO_EVALUADOR',
+                           CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = anteproyectos.estudiante_id),
+                                  ' (SMTP pendiente)')
+                    FROM anteproyectos WHERE id = ?
+                    <sql:param value="${ant.id}"/>
+                </sql:update>
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=reprobado"/>
+            </c:otherwise>
+        </c:choose>
+    </c:if>
 </c:if>
 
 <%-- ===== Historial de calificaciones (RF-35) ===== --%>
@@ -378,6 +412,9 @@
 </c:if>
 <c:if test="${param.exito eq 'evaluado'}">
     <div class="aviso aviso-ok">Anteproyecto aprobado por el evaluador. Estudiante y coordinación fueron notificados (RF-23, RF-24).</div>
+</c:if>
+<c:if test="${param.exito eq 'reprobado'}">
+    <div class="aviso aviso-info">Anteproyecto reprobado. El estudiante fue notificado para corregirlo y volver a presentarlo.</div>
 </c:if>
 <c:if test="${param.exito eq 'calificado_eval'}">
     <div class="aviso aviso-ok">Calificación del evaluador guardada (RF-22, RF-35).</div>
@@ -566,6 +603,21 @@
                 </form>
                 <p class="dato" style="margin-top:8px">
                     <i>Primero debes guardar la calificación del evaluador para poder aprobar el anteproyecto.</i>
+                </p>
+
+                <h3>3. Reprobar</h3>
+                <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    <input type="hidden" name="accion" value="rechazar_eval">
+                    <label for="obsRechEval">Motivo de la reprobación (se lo verá al estudiante)</label>
+                    <textarea id="obsRechEval" name="observacion" maxlength="1000"
+                              placeholder="Indica qué debe corregir el estudiante"><c:out value="${ant['observacion_evaluador']}"/></textarea>
+                    <button class="btn btn-rojo" type="submit"
+                            onclick="return confirm('¿Reprobar el anteproyecto? El estudiante deberá corregirlo y volver a presentarlo.')">Reprobar anteproyecto</button>
+                </form>
+                <p class="dato" style="margin-top:8px">
+                    <i>Al reprobar, el anteproyecto vuelve al estudiante para que lo corrija y lo vuelva a enviar;
+                       pasará nuevamente por la revisión del director.</i>
                 </p>
             </c:when>
             <c:otherwise>

@@ -158,7 +158,13 @@
 </c:if>
 <c:if test="${ant.estado eq 'RECHAZADO'}">
     <div class="aviso aviso-info">
-        Tu anteproyecto fue rechazado. Corrige lo indicado por el director y vuelve a enviarlo.
+        Tu anteproyecto fue <b>reprobado</b>. Corrige lo indicado y vuelve a enviarlo.
+        <c:if test="${not empty ant.observacion_evaluador}">
+            <br><b>Observaciones del evaluador:</b> <c:out value="${ant.observacion_evaluador}"/>
+        </c:if>
+        <c:if test="${not empty ant.observacion_director}">
+            <br><b>Observaciones del director:</b> <c:out value="${ant.observacion_director}"/>
+        </c:if>
     </div>
 </c:if>
 
