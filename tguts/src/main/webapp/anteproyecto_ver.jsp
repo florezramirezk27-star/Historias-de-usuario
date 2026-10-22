@@ -352,9 +352,9 @@
         </c:choose>
     </c:if>
 
-    <%-- ---------- EVALUADOR: REPROBAR (devuelve al estudiante para
+    <%-- ---------- EVALUADOR: APLAZAR (devuelve al estudiante para
          corregir y volver a presentar el documento) ---------- --%>
-    <c:if test="${param.accion eq 'rechazar_eval'}">
+    <c:if test="${param.accion eq 'aplazar_eval'}">
         <c:if test="${rol ne 'EVALUADOR'}"><c:redirect url="403.jsp"/></c:if>
         <c:choose>
             <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
@@ -373,15 +373,49 @@
                      volver a presentar su anteproyecto. --%>
                 <sql:update dataSource="${ds}">
                     INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
-                    SELECT estudiante_id, 'Anteproyecto reprobado por el evaluador',
-                           CONCAT('Tu anteproyecto: ', titulo, ' fue reprobado por el evaluador. Revisa las observaciones, corrígelo y vuelve a presentarlo.'),
-                           'ANTEPROYECTO_RECHAZADO_EVALUADOR',
+                    SELECT estudiante_id, 'Anteproyecto aplazado por el evaluador',
+                           CONCAT('Tu anteproyecto: ', titulo, ' fue aplazado por el evaluador. Revisa las observaciones, corrígelo y vuelve a presentarlo.'),
+                           'ANTEPROYECTO_APLAZADO_EVALUADOR',
                            CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = anteproyectos.estudiante_id),
                                   ' (SMTP pendiente)')
                     FROM anteproyectos WHERE id = ?
                     <sql:param value="${ant.id}"/>
                 </sql:update>
-                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=reprobado"/>
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=aplazado"/>
+            </c:otherwise>
+        </c:choose>
+    </c:if>
+
+    <%-- ---------- EVALUADOR: REPROBAR (decisión definitiva: el
+         estudiante NO puede volver a presentar el anteproyecto) ---------- --%>
+    <c:if test="${param.accion eq 'reprobar_eval'}">
+        <c:if test="${rol ne 'EVALUADOR'}"><c:redirect url="403.jsp"/></c:if>
+        <c:choose>
+            <c:when test="${ant.estado ne 'APROBADO_DIRECTOR'}">
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&error=estado"/>
+            </c:when>
+            <c:otherwise>
+                <sql:update dataSource="${ds}">
+                    UPDATE anteproyectos
+                    SET estado = 'REPROBADO', observacion_evaluador = ?
+                    WHERE id = ? AND evaluador_id = ? AND estado = 'APROBADO_DIRECTOR'
+                    <sql:param value="${param.observacion}"/>
+                    <sql:param value="${ant.id}"/>
+                    <sql:param value="${yo.id}"/>
+                </sql:update>
+                <%-- Notificación al estudiante (RF-37): decisión definitiva,
+                     el proceso termina y no admite nueva presentación. --%>
+                <sql:update dataSource="${ds}">
+                    INSERT INTO notificaciones (usuario_id, titulo, mensaje, evento, correo_log)
+                    SELECT estudiante_id, 'Anteproyecto reprobado definitivamente',
+                           CONCAT('Tu anteproyecto: ', titulo, ' fue reprobado definitivamente por el evaluador. El proceso termina y no admite una nueva presentación. Revisa las observaciones.'),
+                           'ANTEPROYECTO_REPROBADO_EVALUADOR',
+                           CONCAT('Correo a ', (SELECT email FROM usuarios u WHERE u.id = anteproyectos.estudiante_id),
+                                  ' (SMTP pendiente)')
+                    FROM anteproyectos WHERE id = ?
+                    <sql:param value="${ant.id}"/>
+                </sql:update>
+                <c:redirect url="anteproyecto_ver.jsp?id=${ant.id}&exito=reprobado_def"/>
             </c:otherwise>
         </c:choose>
     </c:if>
@@ -413,8 +447,11 @@
 <c:if test="${param.exito eq 'evaluado'}">
     <div class="aviso aviso-ok">Anteproyecto aprobado por el evaluador. Estudiante y coordinación fueron notificados (RF-23, RF-24).</div>
 </c:if>
-<c:if test="${param.exito eq 'reprobado'}">
-    <div class="aviso aviso-info">Anteproyecto reprobado. El estudiante fue notificado para corregirlo y volver a presentarlo.</div>
+<c:if test="${param.exito eq 'aplazado'}">
+    <div class="aviso aviso-info">Anteproyecto aplazado. El estudiante fue notificado para corregirlo y volver a presentarlo.</div>
+</c:if>
+<c:if test="${param.exito eq 'reprobado_def'}">
+    <div class="aviso aviso-error">Anteproyecto reprobado <b>definitivamente</b>. El estudiante fue notificado; el proceso termina y no admite una nueva presentación.</div>
 </c:if>
 <c:if test="${param.exito eq 'calificado_eval'}">
     <div class="aviso aviso-ok">Calificación del evaluador guardada (RF-22, RF-35).</div>
@@ -605,19 +642,34 @@
                     <i>Primero debes guardar la calificación del evaluador para poder aprobar el anteproyecto.</i>
                 </p>
 
-                <h3>3. Reprobar</h3>
+                <h3>3. Aplazar</h3>
                 <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}">
                     <input type="hidden" name="csrf_token" value="${csrfToken}">
-                    <input type="hidden" name="accion" value="rechazar_eval">
-                    <label for="obsRechEval">Motivo de la reprobación (se lo verá al estudiante)</label>
-                    <textarea id="obsRechEval" name="observacion" maxlength="1000"
+                    <input type="hidden" name="accion" value="aplazar_eval">
+                    <label for="obsAplaz">Motivo del aplazo (se lo verá al estudiante)</label>
+                    <textarea id="obsAplaz" name="observacion" maxlength="1000"
                               placeholder="Indica qué debe corregir el estudiante"><c:out value="${ant['observacion_evaluador']}"/></textarea>
-                    <button class="btn btn-rojo" type="submit"
-                            onclick="return confirm('¿Reprobar el anteproyecto? El estudiante deberá corregirlo y volver a presentarlo.')">Reprobar anteproyecto</button>
+                    <button class="btn" type="submit"
+                            onclick="return confirm('¿Aplazar el anteproyecto? El estudiante deberá corregirlo y volver a presentarlo.')">Aplazar anteproyecto</button>
                 </form>
                 <p class="dato" style="margin-top:8px">
-                    <i>Al reprobar, el anteproyecto vuelve al estudiante para que lo corrija y lo vuelva a enviar;
+                    <i>Al aplazar, el anteproyecto vuelve al estudiante para que lo corrija y lo vuelva a enviar;
                        pasará nuevamente por la revisión del director.</i>
+                </p>
+
+                <h3>4. Reprobar (definitivo)</h3>
+                <form method="post" action="anteproyecto_ver.jsp?id=${ant.id}">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    <input type="hidden" name="accion" value="reprobar_eval">
+                    <label for="obsRepro">Motivo de la reprobación (se lo verá al estudiante)</label>
+                    <textarea id="obsRepro" name="observacion" maxlength="1000"
+                              placeholder="Indica los motivos de la reprobación definitiva"><c:out value="${ant['observacion_evaluador']}"/></textarea>
+                    <button class="btn btn-rojo" type="submit"
+                            onclick="return confirm('¿REPROBAR DEFINITIVAMENTE? Esta decisión es final: el estudiante NO podrá volver a presentar el anteproyecto.')">Reprobar definitivamente</button>
+                </form>
+                <p class="dato" style="margin-top:8px">
+                    <i><b>Decisión definitiva e irreversible:</b> el anteproyecto queda reprobado y el estudiante
+                       no podrá corregirlo ni presentarlo de nuevo.</i>
                 </p>
             </c:when>
             <c:otherwise>
@@ -636,6 +688,15 @@
         Este es el estado de tu anteproyecto (RF-34, RF-36).
         <c:if test="${ant.estado eq 'BORRADOR' || ant.estado eq 'RECHAZADO'}">
             <a href="anteproyecto_form.jsp?id=${ant.id}">Completar y enviar</a>
+        </c:if>
+    </div>
+</c:if>
+<c:if test="${ant.estado eq 'REPROBADO'}">
+    <div class="aviso aviso-error">
+        <b>Tu anteproyecto fue reprobado definitivamente por el evaluador.</b>
+        El proceso termina aquí: no es posible corregirlo ni presentarlo de nuevo.
+        <c:if test="${not empty ant['observacion_evaluador']}">
+            <br><b>Observaciones del evaluador:</b> <c:out value="${ant['observacion_evaluador']}"/>
         </c:if>
     </div>
 </c:if>

@@ -321,6 +321,7 @@ Durante el desarrollo se verificó el sistema con una suite E2E de **99 casos** 
 |-------|------------------|
 | Reconstruir WAR | `cd tguts && mvn clean package` |
 | Actualizar BD (migración seguridad) | `mysql -u... < tguts/sql/migracion_seguridad.sql` (en PowerShell: `cmd /c "mysql -uroot < tguts\sql\migracion_seguridad.sql"`) |
+| Actualizar BD (estado REPROBADO) | `mysql -u... < tguts/sql/migracion_reprobacion.sql` (agrega `REPROBADO` al ENUM de `anteproyectos`) |
 | Consultar la BD del entorno local | `C:\xampp\mysql\bin\mysql.exe -uroot -N -B --default-character-set=utf8mb4 db_tgd_uts -e "<sql>"` |
 | Ver logs Tomcat (local) | `C:\xampp\tomcat\logs\catalina.<fecha>.log` |
 | Ver logs Tomcat (Docker) | `docker logs tguts-tomcat` |
@@ -352,3 +353,4 @@ Durante el desarrollo se verificó el sistema con una suite E2E de **99 casos** 
 | `DEPLOY_RENDER.md` | Guía detallada de despliegue en Render |
 | `tguts/sql/db_tgd_uts.sql` | Esquema completo + datos de demostración |
 | `tguts/sql/migracion_seguridad.sql` | Migración de bases existentes (hashes, índices) |
+| `tguts/sql/migracion_reprobacion.sql` | Migración de bases existentes (estado `REPROBADO` del anteproyecto) |

@@ -270,6 +270,7 @@ textarea { min-height: 90px; }
 .estado-APROBADO_DIRECTOR { background: #d1fae5; color: #065f46; }
 .estado-APROBADO_EVALUADOR, .estado-APROBADO, .estado-PUBLICADA { background: #d1fae5; color: #065f46; }
 .estado-RECHAZADO, .estado-RECHAZADA { background: #fee2e2; color: #991b1b; }
+.estado-REPROBADO { background: #fecaca; color: #7f1d1d; }
 .estado-SELECCIONADA { background: #ede9fe; color: #5b21b6; }
 .estado-CERRADA { background: #e5e7eb; color: #374151; }
 .estado-ENTREGA_DOCUMENTO_FINAL { background: #dbeafe; color: #1e40af; }

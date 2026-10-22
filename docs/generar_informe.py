@@ -514,6 +514,7 @@ TAREAS_OPERACION = [
     ("Reconstruir el WAR", "`cd tguts && mvn clean package`", "Genera `tguts/target/tguts.war` (JDK 21, release 17); copiarlo a `C:\\xampp\\tomcat\\webapps\\` y reiniciar Tomcat."),
     ("Consultar la base de datos", "`C:\\xampp\\mysql\\bin\\mysql.exe -uroot -N -B --default-character-set=utf8mb4 db_tgd_uts -e \"<sql>\"`", "Acceso directo a MariaDB de XAMPP."),
     ("Migrar una base existente", "`cmd /c \"mysql -uroot < tguts\\sql\\migracion_seguridad.sql\"`", "Amplía `password`, crea índices y `UNIQUE` y migra los hashes SHA-256 heredados."),
+    ("Agregar el estado REPROBADO", "`cmd /c \"mysql -uroot < tguts\\sql\\migracion_reprobacion.sql\"`", "Agrega `REPROBADO` al ENUM de estado de `anteproyectos` (reprobación definitiva del evaluador)."),
     ("Rotar el costo de PBKDF2", "Variable de entorno `PBKDF2_ITERATIONS`", "Los hashes se recalculan en el siguiente inicio de sesión."),
 ]
 
@@ -1029,6 +1030,7 @@ def solo_zip():
     incluidos = [
         "README.md", "GUION.md", "TEST_RESULTS.md", "DOCUMENTACION_TECNICA.md",
         "tguts/sql/db_tgd_uts.sql", "tguts/sql/migracion_seguridad.sql",
+        "tguts/sql/migracion_reprobacion.sql",
         "tguts/pom.xml",
     ]
     with zipfile.ZipFile(zip_salida, "w", zipfile.ZIP_DEFLATED) as z:

@@ -7,6 +7,7 @@
     <c:when test="${est eq 'APROBADO_DIRECTOR'}">Aprobado por el director</c:when>
     <c:when test="${est eq 'APROBADO_EVALUADOR'}">Aprobado por el evaluador</c:when>
     <c:when test="${est eq 'RECHAZADO'}">Rechazado</c:when>
+    <c:when test="${est eq 'REPROBADO'}">Reprobado (definitivo)</c:when>
     <c:when test="${est eq 'ENTREGA_DOCUMENTO_FINAL'}">Entrega documento final</c:when>
     <c:when test="${est eq 'REVISIÓN_FINAL'}">Revisión final</c:when>
     <c:when test="${est eq 'SUSTENTACIÓN'}">Sustentación</c:when>

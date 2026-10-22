@@ -183,7 +183,8 @@ parcia_2jstl/
     ├── pom.xml            # Configuración Maven (WAR)
     ├── sql/
     │   ├── db_tgd_uts.sql        # Script de base de datos + datos de prueba
-    │   └── migracion_seguridad.sql  # Actualiza bases existentes (opcional)
+    │   ├── migracion_seguridad.sql  # Actualiza bases existentes (opcional)
+    │   └── migracion_reprobacion.sql # Agrega el estado REPROBADO al ENUM (opcional)
     └── src/
         ├── main/java/
         │   └── edu/uts/PoolInicializador.java   # Pool de conexiones (HikariCP)
@@ -256,6 +257,15 @@ mysql -uroot < tguts/sql/migracion_seguridad.sql
 
 Ese script amplía la columna `password`, crea los índices/`UNIQUE` y actualiza los hashes
 de los usuarios de prueba. No elimina datos.
+
+Para bases creadas antes de la función de **reprobación definitiva** del evaluador,
+ejecuta también (una sola vez):
+
+```bash
+mysql -uroot < tguts/sql/migracion_reprobacion.sql
+```
+
+Agrega el valor `REPROBADO` al `ENUM` de estado de `anteproyectos`. No elimina datos.
 
 ---
 

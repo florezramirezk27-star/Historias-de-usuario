@@ -52,6 +52,10 @@ Si necesitas **reimportar** el esquema (por ejemplo tras vaciar la base), ejecut
 > Si la base **ya existía** con el esquema anterior (contraseñas SHA-256, sin índices),
 > ejecuta una sola vez `tguts/sql/migracion_seguridad.sql` adaptado a la base del addon:
 > migra los hashes a PBKDF2, amplía `password` a `VARCHAR(255)` y crea los índices.
+>
+> Si la base **ya existía** antes de la función de reprobación definitiva del evaluador,
+> ejecuta también `tguts/sql/migracion_reprobacion.sql`: agrega `REPROBADO` al `ENUM`
+> de estado de `anteproyectos` (en la consola SQL del addon: el `ALTER` del script).
 
 ---
 

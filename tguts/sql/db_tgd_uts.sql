@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS anteproyectos (
   documento             VARCHAR(255) NULL,             -- archivo subido (anteproyecto)
   director_id           INT NULL,
   evaluador_id          INT NULL,
-  estado                ENUM('BORRADOR','ENVIADO','APROBADO_DIRECTOR','APROBADO_EVALUADOR','RECHAZADO',
+  estado                ENUM('BORRADOR','ENVIADO','APROBADO_DIRECTOR','APROBADO_EVALUADOR','RECHAZADO','REPROBADO',
                              'ENTREGA_DOCUMENTO_FINAL','REVISIÓN_FINAL','SUSTENTACIÓN','FINALIZADO') NOT NULL DEFAULT 'BORRADOR',
   calificacion_director DECIMAL(3,1) NULL,
   observacion_director  TEXT NULL,

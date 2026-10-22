@@ -28,6 +28,7 @@
                    IFNULL(SUM(a.estado = 'APROBADO_DIRECTOR'), 0) AS en_evaluacion,
                    IFNULL(SUM(a.estado = 'APROBADO_EVALUADOR'), 0) AS aprobados,
                    IFNULL(SUM(a.estado = 'RECHAZADO'), 0) AS rechazados,
+                   IFNULL(SUM(a.estado = 'REPROBADO'), 0) AS reprobados,
                    IFNULL(SUM(a.estado = 'ENTREGA_DOCUMENTO_FINAL'), 0) AS entrega_documento,
                    IFNULL(SUM(a.estado = 'REVISIÓN_FINAL'), 0) AS revision_final,
                    IFNULL(SUM(a.estado = 'SUSTENTACIÓN'), 0) AS sustentacion,
@@ -48,6 +49,7 @@
                    IFNULL(SUM(a.estado = 'APROBADO_DIRECTOR'), 0) AS pendientes,
                    IFNULL(SUM(a.estado = 'APROBADO_EVALUADOR'), 0) AS aprobados,
                    IFNULL(SUM(a.estado = 'RECHAZADO'), 0) AS rechazados,
+                   IFNULL(SUM(a.estado = 'REPROBADO'), 0) AS reprobados,
                    IFNULL(SUM(a.estado = 'ENTREGA_DOCUMENTO_FINAL'), 0) AS entrega_documento,
                    IFNULL(SUM(a.estado = 'REVISIÓN_FINAL'), 0) AS revision_final,
                    IFNULL(SUM(a.estado = 'SUSTENTACIÓN'), 0) AS sustentacion,
@@ -104,6 +106,7 @@
                     <th>En evaluación</th>
                     <th>Aprobados</th>
                     <th>Rechazados</th>
+                    <th>Reprobados</th>
                     <th>Entrega final</th>
                     <th>Revisión final</th>
                     <th>Sustentación</th>
@@ -117,6 +120,7 @@
                         <td><c:out value="${r.en_evaluacion}"/></td>
                         <td><c:out value="${r.aprobados}"/></td>
                         <td><c:out value="${r.rechazados}"/></td>
+                        <td><c:out value="${r.reprobados}"/></td>
                         <td><c:out value="${r.entrega_documento}"/></td>
                         <td><c:out value="${r.revision_final}"/></td>
                         <td><c:out value="${r.sustentacion}"/></td>
@@ -136,6 +140,7 @@
                     <th>Pendientes por aprobar</th>
                     <th>Aprobados</th>
                     <th>Rechazados</th>
+                    <th>Reprobados</th>
                     <th>Entrega final</th>
                     <th>Revisión final</th>
                     <th>Sustentación</th>
@@ -148,6 +153,7 @@
                         <td><c:out value="${r.pendientes}"/></td>
                         <td><c:out value="${r.aprobados}"/></td>
                         <td><c:out value="${r.rechazados}"/></td>
+                        <td><c:out value="${r.reprobados}"/></td>
                         <td><c:out value="${r.entrega_documento}"/></td>
                         <td><c:out value="${r.revision_final}"/></td>
                         <td><c:out value="${r.sustentacion}"/></td>
