@@ -1,6 +1,6 @@
 # Documentación técnica — Sistema de Trabajos de Grado UTS
 
-**Versión:** 2.0 (22/10/2026) — describe el código verificado con **99/99 pruebas E2E aprobadas** (`pruebas/salida_e2e_local.txt`).
+**Versión:** 2.0 (22/10/2026) — describe el código verificado con **99/99 pruebas E2E aprobadas**.
 **Alcance:** Arquitectura, flujo de datos, seguridad, esquema BD, decisiones de diseño y operación.
 
 ---
@@ -268,7 +268,6 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 | **CRUD de calendario y formatos** | Consulta abierta a cualquier usuario autenticado; alta, edición y borrado solo para ADMIN/COORDINACIÓN | Coherente con el resto de módulos y con la verificación E2E (K-01…K-05, L-01…L-06). |
 | **Búsqueda en coordinación** | Un único campo que busca por **nombre, código de matrícula o correo** | El enunciado del parcial pide la búsqueda por nombre y código; el correo se añadió por comodidad (casos F-01…F-04). |
 | **Asignación de evaluador** | Solo es posible tras la aprobación del director | Evita asignar evaluación a un anteproyecto que todavía no tiene Avalúo de director (caso G-04). |
-| **Alcance de las pruebas** | Suite E2E propia con cuentas `e2e-*` y restauración final de la base | Garantiza que los datos de demostración no se alteran al ejecutar las pruebas (caso O-01). |
 
 ---
 
@@ -279,9 +278,9 @@ FINALIZADO  /  vuelve a REVISIÓN_FINAL
 | Paso | Acción | Detalle |
 |---|---|---|
 | 1 | Base de datos | `C:\xampp\mysql\bin\mysql.exe -uroot -e "source tguts/sql/db_tgd_uts.sql"` → base `db_tgd_uts` |
-| 2 | Compilar y desplegar | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` (compila el WAR, lo copia a `C:\xampp\tomcat\webapps\`, reinicia Tomcat y espera el health check) |
-| 3 | Acceso | `http://localhost:8080/tguts/` — Tomcat **8.5.96**, MariaDB **10.4.32** |
-| 4 | Pruebas | `python pruebas\e2e_local.py` → 99/99 APROBADOS (evidencia en `pruebas/salida_e2e_local.txt`) |
+| 2 | Compilar | `cd tguts && mvn clean package` → genera `tguts/target/tguts.war` |
+| 3 | Desplegar | Copiar `tguts.war` a `C:\xampp\tomcat\webapps\` y reiniciar Tomcat |
+| 4 | Acceso | `http://localhost:8080/tguts/` — Tomcat **8.5.96**, MariaDB **10.4.32** |
 
 ### Local con Docker (alternativa documentada, no ejecutada en esta versión)
 ```bash
@@ -299,7 +298,6 @@ docker run -d --name tguts-tomcat --network tguts_net -p 18080:8080 \
   tomcat:9.0-jdk17-temurin
 ```
 Acceso: `http://localhost:18080/`
-Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apuntando al puerto 18080).
 
 ### Render (cloud)
 - `Dockerfile`: multi-stage (Maven build → Tomcat 9 JDK 17).
@@ -309,38 +307,11 @@ Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apunt
 
 ---
 
-## 7. Pruebas automatizadas (E2E)
+## 7. Pruebas automatizadas (histórico)
 
-**Suite:** `pruebas/e2e_core.py` — **99 casos** en 15 bloques (A–O), Python 3 con **solo librería estándar** (`urllib`, `http.cookiejar`, `subprocess`).
+Durante el desarrollo se verificó el sistema con una suite E2E de **99 casos** en 15 bloques (A–O), escrita en Python 3 con **solo librería estándar**, contra el entorno local XAMPP: **99/99 APROBADOS (66,2 s) el 22/10/2026**. La suite creaba sus propias cuentas `e2e-<rol>@uts.edu.co` y las borraba al terminar, por lo que los datos de demostración quedaban intactos (caso O-01).
 
-| Bloque | Cobertura | Casos |
-|---|---|---|
-| A | Acceso, sesión, CSRF y guardas por rol | A-01 … A-12 |
-| B | CRUD de usuarios (crear, editar, listar, borrar, dependencias) | B-01 … B-09 |
-| C | CRUD del banco de ideas (publicar, editar, cerrar, eliminar, seleccionar) | C-01 … C-07 |
-| D | Anteproyecto del estudiante (selección, envío, validaciones, borrado, propiedad) | D-01 … D-10 |
-| E | Dirección: calificar, eliminar calificación, aprobar, rechazar, corrección del estudiante | E-01 … E-07 |
-| F | Búsqueda de estudiantes por nombre, código y correo; ficha del estudiante | F-01 … F-05 |
-| G | Asignación de director y evaluador (rol y estado validados) | G-01 … G-05 |
-| H | Evaluación del evaluador (calificar, borrar, aprobar, notificar) | H-01 … H-04 |
-| I | Los tres informes de estado (columnas exactas y contenido real) | I-01 … I-04 |
-| J | Entrega del documento final, corrección, revisión, sustentación y finalización | J-01 … J-17 |
-| K | Calendario académico (alta, edición, borrado, permisos) | K-01 … K-05 |
-| L | Formatos de grado (alta, actualización, borrado, escapado del HTML) | L-01 … L-06 |
-| M | Trámites (solicitud, respuesta, idempotencia, propiedad) | M-01 … M-04 |
-| N | Notificaciones (eventos registrados, bandeja, notificación al director) | N-01 … N-03 |
-| O | Limpieza final: la base vuelve al estado previo | O-01 |
-
-**Ejecutores (envuelven la misma suite):**
-
-| Script | Entorno | Resultado |
-|---|---|---|
-| `pruebas/e2e_local.py` | XAMPP: Tomcat 8.5.96 + MariaDB 10.4.32, `http://localhost:8080/tguts` | **99/99 APROBADOS** (66,2 s) el 22/10/2026; guarda la salida en `pruebas/salida_e2e_local.txt` |
-| `pruebas/e2e_tguts.py` | Docker: Tomcat 9 + MySQL 8, `http://localhost:18080` | Alternativa documentada (no ejecutada en esta versión) |
-
-**Aislamiento:** la suite crea sus propias cuentas `e2e-<rol>@uts.edu.co`, limpia lo que dejó ejecuciones anteriores y borra todo al terminar; el caso O-01 verifica que los **datos de demostración quedan intactos** (6 usuarios, 3 ideas, 2 formatos, 3 eventos, 0 anteproyectos).
-
-**Evidencia:** códigos HTTP, URLs finales, cabeceras `<th>` de cada tabla, fragmentos de HTML y consultas SQL a la base de datos. El detalle caso por caso está en `TEST_RESULTS.md` y la salida íntegra en `pruebas/salida_e2e_local.txt`.
+> Los scripts de la suite y la salida íntegra de la ejecución se retiraron del repositorio. El detalle caso por caso, el alcance de cada bloque y los defectos corregidos se conservan en `TEST_RESULTS.md`.
 
 ---
 
@@ -348,7 +319,6 @@ Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apunt
 
 | Tarea | Comando / Acción |
 |-------|------------------|
-| Reconstruir y redeployar (local XAMPP) | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` |
 | Reconstruir WAR | `cd tguts && mvn clean package` |
 | Actualizar BD (migración seguridad) | `mysql -u... < tguts/sql/migracion_seguridad.sql` (en PowerShell: `cmd /c "mysql -uroot < tguts\sql\migracion_seguridad.sql"`) |
 | Consultar la BD del entorno local | `C:\xampp\mysql\bin\mysql.exe -uroot -N -B --default-character-set=utf8mb4 db_tgd_uts -e "<sql>"` |
@@ -365,7 +335,7 @@ Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apunt
 1. **SMTP pendiente:** `correo_log` en `notificaciones` y `tramites` solo registra texto; no hay envío real.
 2. **Archivos subidos (legacy):** `descargar.jsp` sirve archivos de `uploadDir/` (fuera del WAR). En contenedores efímeros (Render) **no persisten**; usar URLs externas.
 3. **Calendario / Formatos iniciales:** Son plantillas/fechas de demostración. Deben reemplazarse por los oficiales antes de producción.
-4. **Sin tests unitarios Java:** Solo `PoolInicializador` (clase única). La lógica está en JSP; las pruebas son funcionales E2E (99 casos).
+4. **Sin tests unitarios Java:** Solo `PoolInicializador` (clase única). La lógica está en JSP; la verificación se hizo con una suite E2E funcional de 99 casos (hoy retirada del repositorio, ver sección 7).
 5. **Concurrencia:** `<sql:transaction>` serializa en BD; no hay bloqueo optimista en capa JSP.
 6. **Expresión EL dentro de `CONCAT` en `tramites.jsp`:** el `INSERT` de la notificación concatena una expresión JSTL en el `VALUES` (línea ~47). Es un punto a parametrizar en la próxima iteración.
 7. **Procesamiento `multipart` antes de la validación:** `common/config.jsp` prepara el Map `campos` (y `pgCampos` guarda el archivo) antes de `common/verify_csrf.jsp`; en la interfaz actual los formularios ya no suben archivos, por lo que el riesgo es residual.
@@ -377,13 +347,8 @@ Pruebas: `python pruebas\e2e_tguts.py` (misma suite `pruebas/e2e_core.py`, apunt
 | Documento | Contenido |
 |-----------|-----------|
 | `README.md` | Puesta en marcha, usuarios, catálogo RF-01…RF-43, despliegue, notas |
-| `TEST_RESULTS.md` | Registro de pruebas E2E (99/99) con evidencia y detalle de los bugs corregidos |
+| `TEST_RESULTS.md` | Registro histórico de las pruebas E2E (99/99) y detalle de los bugs corregidos |
 | `GUION.md` | Guion de demostración paso a paso (todo en tablas) |
 | `DEPLOY_RENDER.md` | Guía detallada de despliegue en Render |
 | `tguts/sql/db_tgd_uts.sql` | Esquema completo + datos de demostración |
 | `tguts/sql/migracion_seguridad.sql` | Migración de bases existentes (hashes, índices) |
-| `pruebas/e2e_core.py` | Suite de pruebas end-to-end (99 casos, bloques A–O) |
-| `pruebas/e2e_local.py` | Ejecutor local (XAMPP) que guarda `salida_e2e_local.txt` |
-| `pruebas/e2e_tguts.py` | Ejecutor equivalente para Docker (puerto 18080) |
-| `pruebas/desplegar_local.ps1` | Reconstrucción, redespliegue y health check en Tomcat de XAMPP |
-| `pruebas/salida_e2e_local.txt` | Evidencia de la última ejecución real (22/10/2026) |

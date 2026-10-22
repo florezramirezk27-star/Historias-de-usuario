@@ -18,8 +18,7 @@ tguts/src/main/webapp/WEB-INF/lib/*.jar
 .DS_Store
 Thumbs.db
 
-# Pruebas E2E
-pruebas/__pycache__/
+# Python
 docs/__pycache__/
 __pycache__/
 *.pyc

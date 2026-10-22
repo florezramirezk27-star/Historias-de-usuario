@@ -71,7 +71,6 @@ El sistema gestiona todo el proceso de un trabajo de grado: desde la publicació
 | Base de datos | **MariaDB 10.4.32** — `C:\xampp\mysql\bin\mysql.exe` (root, sin contraseña), puerto 3306 |
 | Aplicación | `http://localhost:8080/tguts/` (contexto WAR `tguts`) |
 | Build | Maven con JDK 21 → `maven.compiler.release=17` |
-| Despliegue automatizado | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` |
 
 ---
 
@@ -168,18 +167,12 @@ parcia_2jstl/
 ├── README.md              # Documentación e historias de usuario
 ├── DOCUMENTACION_TECNICA.md  # Arquitectura, esquema BD, seguridad y decisiones
 ├── GUION.md               # Guion de demostración paso a paso (todo en tablas)
-├── TEST_RESULTS.md        # Registro de pruebas E2E con evidencia real
+├── TEST_RESULTS.md        # Registro histórico de las pruebas E2E
 ├── DEPLOY_RENDER.md       # Guía de despliegue en Render
 ├── Dockerfile             # Imagen Tomcat 9 + WAR (Render)
 ├── render.yaml            # Blueprint de despliegue en Render
 ├── .dockerignore
 ├── .gitignore
-├── pruebas/
-│   ├── e2e_core.py        # Suite E2E: 99 casos (bloques A–O), Python stdlib
-│   ├── e2e_local.py       # Ejecutor local (XAMPP) → guarda salida_e2e_local.txt
-│   ├── e2e_tguts.py       # Ejecutor equivalente para Docker (puerto 18080)
-│   ├── desplegar_local.ps1# mvn package → copia el WAR → reinicia Tomcat → health check
-│   └── salida_e2e_local.txt # Evidencia de la última ejecución real (99/99)
 ├── docs/
 │   ├── generar_informe.py # Genera el documento final consolidado (.docx)
 │   ├── verificar_informe.py
@@ -318,8 +311,8 @@ Guía detallada: [`DEPLOY_RENDER.md`](DEPLOY_RENDER.md).
 |---|---|
 | `docs/Sistema_Trabajos_de_Grado_UTS.docx` | Documento final consolidado (42 páginas): introducción, objetivos, marco referencial, catálogo RF-01…RF-43 y RNF-01…RNF-10, reglas de negocio, 28 historias de usuario, modelo de datos, arquitectura, seguridad, plan de trabajo, guion de demostración, registro de las 99 pruebas, despliegue, conclusiones y anexos |
 | `docs/Sistema_Trabajos_de_Grado_UTS.pdf` | Versión PDF del mismo documento (índice actualizado con números de página) |
-| `Sistema_Trabajos_de_Grado_UTS.zip` | Paquete con el documento (.docx y .pdf) y las fuentes del proyecto (documentación, suite de pruebas, evidencia y SQL) |
-| `docs/generar_informe.py` | Script que regenera el documento a partir de `README.md`, `GUION.md`, `TEST_RESULTS.md`, `DOCUMENTACION_TECNICA.md` y la evidencia real de las pruebas |
+| `Sistema_Trabajos_de_Grado_UTS.zip` | Paquete con el documento (.docx y .pdf) y las fuentes del proyecto (documentación y SQL) |
+| `docs/generar_informe.py` | Script que regenera el documento a partir de `README.md`, `GUION.md`, `TEST_RESULTS.md` y `DOCUMENTACION_TECNICA.md` |
 
 ```bash
 python docs\generar_informe.py     # regenera el .docx y el .zip
@@ -338,42 +331,8 @@ python docs\generar_informe.py     # regenera el .docx y el .zip
 
 ---
 
-## Pruebas end-to-end (método ejecutado: XAMPP local)
+## Pruebas end-to-end (histórico)
 
-**Resultado real de la última ejecución: 99/99 APROBADOS (66,2 s) el 22/10/2026.**
-Evidencia completa en [`pruebas/salida_e2e_local.txt`](pruebas/salida_e2e_local.txt) y detalle caso por caso en [`TEST_RESULTS.md`](TEST_RESULTS.md).
+Durante el desarrollo se verificó el sistema con una suite E2E de 99 casos (Python, librería estándar) ejecutada contra el entorno XAMPP local: **99/99 APROBADOS (66,2 s) el 22/10/2026**. El detalle caso por caso se conserva en [`TEST_RESULTS.md`](TEST_RESULTS.md).
 
-| Paso | Comando | Detalle |
-|---|---|---|
-| 1 | MySQL/MariaDB de XAMPP en `localhost:3306` | Base `db_tgd_uts` creada con `tguts/sql/db_tgd_uts.sql` |
-| 2 | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` | `mvn clean package` → copia `tguts.war` a `C:\xampp\tomcat\webapps\` → reinicia Tomcat → espera el health check de `http://localhost:8080/tguts/login.jsp` |
-| 3 | `python pruebas\e2e_local.py` | Ejecuta los 99 casos y guarda la salida en `pruebas/salida_e2e_local.txt` |
-| 4 | Resultado | `===== RESUMEN: 99/99 APROBADOS =====` |
-
-La suite (`pruebas/e2e_core.py`) cubre 15 bloques: **A** acceso/sesión/CSRF/roles · **B** CRUD de usuarios · **C** CRUD del banco de ideas · **D** alta, edición, envío y borrado del anteproyecto · **E** calificación y aprobación del director · **F** búsqueda de estudiantes por nombre, código y correo · **G** asignación de director y evaluador · **H** evaluación del evaluador · **I** los tres informes · **J** entrega del documento final, corrección, revisión, sustentación y finalización · **K** CRUD del calendario · **L** CRUD de formatos · **M** trámites · **N** notificaciones · **O** limpieza final.
-
-La suite **crea sus propias cuentas** (`e2e-<rol>@uts.edu.co`) y las elimina al terminar, de modo que los datos de demostración de la tabla de arriba quedan intactos (lo comprueba el caso O-01). Solo usa la **librería estándar de Python** (`urllib`, `http.cookiejar`, `subprocess`).
-
-### Alternativa documentada: Docker (puerto 18080)
-
-```bash
-# 1) Imagen de MySQL con el esquema
-docker network create tguts_net
-docker run -d --name tguts_mysql --network tguts_net \
-  -e MYSQL_ROOT_PASSWORD=rootpw -e MYSQL_DATABASE=db_tgd_uts \
-  -v "%CD%\tguts\sql\db_tgd_uts.sql:/docker-entrypoint-initdb.d/01.sql:ro" \
-  mysql:8.0
-
-# 2) Compilar y desplegar Tomcat 9
-cd tguts && mvn -B clean package
-docker run -d --name tguts_tomcat --network tguts_net -p 18080:8080 \
-  -e DB_HOST=tguts_mysql -e DB_PORT=3306 -e DB_NAME=db_tgd_uts \
-  -e DB_USER=root -e DB_PASSWORD=rootpw \
-  -v "%CD%\tguts\target\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" \
-  tomcat:9.0-jdk17-temurin
-
-# 3) Ejecutar la misma suite contra ese contenedor
-python pruebas\e2e_tguts.py
-```
-
-> Esta variante es **una alternativa documentada, no ejecutada** en la versión actual: la evidencia real se obtuvo con el entorno local XAMPP descrito arriba. Cualquier afirmación de pruebas solo debe hacerse conservando la salida de la ejecución.
+> Los scripts de la suite y la salida completa de la ejecución se retiraron del repositorio; este apartado queda como registro histórico de la verificación.

@@ -10,8 +10,7 @@ El documento integra:
   * Modelo de datos, arquitectura, seguridad y decisiones de diseño.
   * Plan de trabajo.
   * Guion de demostración (se conserva el contenido de GUION.md).
-  * Registro de pruebas (se conserva el contenido de TEST_RESULTS.md) usando
-    la salida real guardada en pruebas/salida_e2e_local.txt.
+  * Registro de pruebas (se conserva el contenido de TEST_RESULTS.md).
 
 Uso:
     python docs/generar_informe.py
@@ -507,14 +506,12 @@ PLAN_TRABAJO = [
     ("F4", "Implementación del núcleo del proceso", "Autenticación, usuarios, ideas, anteproyecto, calificaciones, aprobación y evaluación.", "Módulos JSP núcleo", "3 semanas", "Equipo de desarrollo", "Completada"),
     ("F5", "Módulos complementarios", "Entrega final, sustentación, trámites, calendario, formatos, informes y notificaciones.", "Módulos JSP complementarios", "2 semanas", "Equipo de desarrollo", "Completada"),
     ("F6", "Seguridad y endurecimiento", "PBKDF2, CSRF, guardas por rol, por propiedad y por estado, escapado de la salida HTML.", "Capa de seguridad", "1 semana", "Equipo de desarrollo", "Completada"),
-    ("F7", "Pruebas end-to-end y correcciones", "Suite de 99 casos, ejecución real contra Tomcat y base de datos, corrección de los defectos detectados.", "pruebas/e2e_core.py + salida_e2e_local.txt", "1,5 semanas", "Equipo de pruebas", "Completada (99/99)"),
+    ("F7", "Pruebas end-to-end y correcciones", "Suite de 99 casos, ejecución real contra Tomcat y base de datos, corrección de los defectos detectados.", "Suite E2E (Python, retirada del repositorio) + TEST_RESULTS.md", "1,5 semanas", "Equipo de pruebas", "Completada (99/99)"),
     ("F8", "Documentación y sustentación final", "Documento técnico, guion de demostración, manual de usuario y documento final.", "README, DOCUMENTACION_TECNICA, GUION, TEST_RESULTS, .docx", "1 semana", "Equipo de documentación", "Completada"),
 ]
 
 TAREAS_OPERACION = [
-    ("Reconstruir y redesplegar en el entorno local", "`powershell -ExecutionPolicy Bypass -File pruebas\\desplegar_local.ps1`", "Compila el WAR, lo copia en `C:\\xampp\\tomcat\\webapps\\`, reinicia Tomcat y espera el health check de `http://localhost:8080/tguts/login.jsp`."),
-    ("Reconstruir el WAR", "`cd tguts && mvn clean package`", "Genera `tguts/target/tguts.war` (JDK 21, release 17)."),
-    ("Ejecutar la suite E2E", "`python pruebas\\e2e_local.py`", "99 casos; guarda la salida en `pruebas/salida_e2e_local.txt`."),
+    ("Reconstruir el WAR", "`cd tguts && mvn clean package`", "Genera `tguts/target/tguts.war` (JDK 21, release 17); copiarlo a `C:\\xampp\\tomcat\\webapps\\` y reiniciar Tomcat."),
     ("Consultar la base de datos", "`C:\\xampp\\mysql\\bin\\mysql.exe -uroot -N -B --default-character-set=utf8mb4 db_tgd_uts -e \"<sql>\"`", "Acceso directo a MariaDB de XAMPP."),
     ("Migrar una base existente", "`cmd /c \"mysql -uroot < tguts\\sql\\migracion_seguridad.sql\"`", "Amplía `password`, crea índices y `UNIQUE` y migra los hashes SHA-256 heredados."),
     ("Rotar el costo de PBKDF2", "Variable de entorno `PBKDF2_ITERATIONS`", "Los hashes se recalculan en el siguiente inicio de sesión."),
@@ -529,7 +526,10 @@ def construir():
     guion = leer("GUION.md")
     pruebas = leer("TEST_RESULTS.md")
     tecnica = leer("DOCUMENTACION_TECNICA.md")
-    evidencia = leer("pruebas/salida_e2e_local.txt")
+    # La evidencia de la suite E2E se retiró del repositorio junto con los
+    # scripts; si vuelve a existir, se incrusta en el informe.
+    ruta_evidencia = "pruebas/salida_e2e_local.txt"
+    evidencia = leer(ruta_evidencia) if os.path.exists(os.path.join(RAIZ, ruta_evidencia)) else ""
 
     # ------------------------------------------------------------- portada
     for _ in range(3):
@@ -685,8 +685,8 @@ def construir():
     parrafo(doc,
             "El proyecto sigue un ciclo iterativo incremental: cada bloque funcional (autenticación, usuarios, ideas, "
             "anteproyyecto, evaluación, entrega final, sustentación, módulos complementarios) se implementa, se despliega y "
-            "se valida antes de pasar al siguiente. La validación final se apoya en una suite end-to-end de 99 casos "
-            "ejecutada contra el despliegue real, con evidencia conservada.")
+            "se valida antes de pasar al siguiente. La validación final se apoyó en una suite end-to-end de 99 casos "
+            "ejecutada contra el despliegue real, cuyo registro se conserva en TEST_RESULTS.md.")
 
     # ------------------------------------------------------- 3. Requisitos
     titulo(doc, "3. Análisis de requisitos", 1)
@@ -844,9 +844,10 @@ OBSERVADO (documento final) --->  el estudiante corrige y reenvía""")
             "resultado contra el estado de la base de datos. Este tipo de prueba es el adecuado para el proyecto porque "
             "verifica de forma simultánea la interfaz, las reglas de negocio, la persistencia y los mensajes al usuario.")
     parrafo(doc,
-            "La suite se organiza en quince bloques (A–O) con 99 casos, cubre el flujo completo hasta la aprobación del "
-            "documento final y la finalización del trabajo de grado, y se ejecuta de forma aislada: crea sus propias cuentas "
-            "(`e2e-<rol>@uts.edu.co`) y las elimina al terminar, de modo que los datos de demostración permanecen intactos.",
+            "La suite se organizó en quince bloques (A–O) con 99 casos, cubrió el flujo completo hasta la aprobación del "
+            "documento final y la finalización del trabajo de grado, y se ejecutó de forma aislada: creaba sus propias cuentas "
+            "(`e2e-<rol>@uts.edu.co`) y las eliminaba al terminar, de modo que los datos de demostración permanecían intactos. "
+            "Los scripts se retiraron del repositorio; el detalle caso por caso se conserva en TEST_RESULTS.md.",
             tam=10)
     titulo(doc, "9.2 Entorno de ejecución", 2)
     agregar_tabla(doc, ["Elemento", "Detalle"], [
@@ -855,8 +856,8 @@ OBSERVADO (documento final) --->  el estudiante corrige y reenvía""")
         ("Servidor de aplicaciones", "Apache Tomcat 8.5.96 (XAMPP, `C:\\xampp\\tomcat`)"),
         ("Base de datos", "MariaDB 10.4.32 (XAMPP, puerto 3306), base `db_tgd_uts`"),
         ("Compilación", "Maven con JDK 21, `maven.compiler.release=17`"),
-        ("Script", "`pruebas/e2e_local.py` + `pruebas/e2e_core.py` (Python 3, solo librería estándar)"),
-        ("Evidencia", "`pruebas/salida_e2e_local.txt` (salida íntegra de la ejecución)"),
+        ("Suite de pruebas", "E2E propia en Python 3 (solo librería estándar), hoy retirada del repositorio"),
+        ("Evidencia", "Salida íntegra de la ejecución (archivo retirado del repositorio)"),
         ("Resultado", "99/99 APROBADOS en 66,2 s"),
     ], tam=9.5)
     titulo(doc, "9.3 Resultado global", 2)
@@ -867,7 +868,7 @@ OBSERVADO (documento final) --->  el estudiante corrige y reenvía""")
         ("Duración de la suite", "66,2 segundos"),
         ("Cobertura funcional", "Login y seguridad · usuarios · ideas · anteproyecto · dirección · búsqueda · asignación · evaluación · informes · entrega final y sustentación · calendario · formatos · trámites · notificaciones · limpieza"),
         ("Integridad de los datos", "Verificada por el caso O-01: la base queda con 6 usuarios, 3 ideas, 2 formatos, 3 eventos y 0 anteproyectos"),
-        ("Evidencia conservada", "`pruebas/salida_e2e_local.txt`"),
+        ("Evidencia conservada", "Salida de la ejecución del 22/10/2026 (retirada del repositorio)"),
     ], tam=9.5)
     titulo(doc, "9.4 Resultados caso por caso", 2)
 
@@ -891,15 +892,21 @@ OBSERVADO (documento final) --->  el estudiante corrige y reenvía""")
         bloque = " ".join(palabras[1:])
         descripcion = ("%s: %s" % (bloque, desc.strip())).strip(": ").strip() if bloque else desc.strip()
         filas_casos.append((ident.strip(), descripcion, detalle, estado))
-    titulo(doc, "9.4.1 Bloques A a E — acceso, usuarios, ideas, anteproyecto y dirección", 3)
-    agregar_tabla(doc, ["Caso", "Descripción", "Evidencia observada", "Resultado"],
-                  [f for f in filas_casos if re.match(r"^[A-E]-\d+$", f[0])], tam=8)
-    titulo(doc, "9.4.2 Bloques F a J — búsqueda, asignación, evaluación, informes, entrega final y sustentación", 3)
-    agregar_tabla(doc, ["Caso", "Descripción", "Evidencia observada", "Resultado"],
-                  [f for f in filas_casos if re.match(r"^[F-J]-\d+$", f[0])], tam=8)
-    titulo(doc, "9.4.3 Bloques K a O — calendario, formatos, trámites, notificaciones y limpieza", 3)
-    agregar_tabla(doc, ["Caso", "Descripción", "Evidencia observada", "Resultado"],
-                  [f for f in filas_casos if re.match(r"^[K-O]-\d+$", f[0])], tam=8)
+    if filas_casos:
+        titulo(doc, "9.4.1 Bloques A a E — acceso, usuarios, ideas, anteproyecto y dirección", 3)
+        agregar_tabla(doc, ["Caso", "Descripción", "Evidencia observada", "Resultado"],
+                      [f for f in filas_casos if re.match(r"^[A-E]-\d+$", f[0])], tam=8)
+        titulo(doc, "9.4.2 Bloques F a J — búsqueda, asignación, evaluación, informes, entrega final y sustentación", 3)
+        agregar_tabla(doc, ["Caso", "Descripción", "Evidencia observada", "Resultado"],
+                      [f for f in filas_casos if re.match(r"^[F-J]-\d+$", f[0])], tam=8)
+        titulo(doc, "9.4.3 Bloques K a O — calendario, formatos, trámites, notificaciones y limpieza", 3)
+        agregar_tabla(doc, ["Caso", "Descripción", "Evidencia observada", "Resultado"],
+                      [f for f in filas_casos if re.match(r"^[K-O]-\d+$", f[0])], tam=8)
+    else:
+        parrafo(doc,
+                "La tabla caso por caso se generaba a partir de la salida de la suite E2E; ese archivo se retiró del "
+                "repositorio. El detalle de los 99 casos y sus resultados se conserva en TEST_RESULTS.md.",
+                tam=10)
 
     titulo(doc, "9.5 Defectos detectados y corregidos", 2)
     parrafo(doc,
@@ -933,15 +940,14 @@ OBSERVADO (documento final) --->  el estudiante corrige y reenvía""")
     agregar_tabla(doc, ["Paso", "Acción", "Detalle"], [
         ("1", "Iniciar MySQL/MariaDB de XAMPP", "Servicio en `localhost:3306`, usuario `root` sin contraseña."),
         ("2", "Crear la base de datos", "`C:\\xampp\\mysql\\bin\\mysql.exe -uroot -e \"source tguts/sql/db_tgd_uts.sql\"` → base `db_tgd_uts`."),
-        ("3", "Compilar y desplegar", "`powershell -ExecutionPolicy Bypass -File pruebas\\desplegar_local.ps1`"),
+        ("3", "Compilar y desplegar", "`cd tguts && mvn clean package` → copiar `tguts.war` a `C:\\xampp\\tomcat\\webapps\\` y reiniciar Tomcat."),
         ("4", "Acceder", "`http://localhost:8080/tguts/`"),
-        ("5", "Ejecutar las pruebas", "`python pruebas\\e2e_local.py` → 99/99 APROBADOS."),
     ], tam=9.5)
     titulo(doc, "10.2 Alternativa documentada con Docker (no ejecutada en esta versión)", 2)
     parrafo(doc,
-            "El repositorio incluye un `Dockerfile` (Tomcat 9 + WAR) y el script `pruebas/e2e_tguts.py`, que ejecuta la "
-            "misma suite contra un contenedor en el puerto 18080. Esta variante queda documentada como alternativa; la "
-            "evidencia de pruebas de esta versión procede del entorno local XAMPP described en el apartado anterior.",
+            "El repositorio incluye un `Dockerfile` (Tomcat 9 + WAR) para levantar la aplicación en un contenedor en el "
+            "puerto 18080. Esta variante queda documentada como alternativa; la verificación de esta versión se realizó "
+            "en el entorno local XAMPP descrito en el apartado anterior.",
             tam=10)
     codigo(doc, """docker network create tguts_net
 docker run -d --name tguts-mysql --network tguts_net \\
@@ -952,8 +958,7 @@ docker run -d --name tguts-tomcat --network tguts_net -p 18080:8080 \\
   -e DB_HOST=tguts-mysql -e DB_PORT=3306 -e DB_NAME=db_tgd_uts \\
   -e DB_USER=root -e DB_PASSWORD=rootpw \\
   -v "%CD%\\tguts\\target\\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" \\
-  tomcat:9.0-jdk17-temurin
-python pruebas\\e2e_tguts.py""")
+  tomcat:9.0-jdk17-temurin""")
     titulo(doc, "10.3 Despliegue en la nube", 2)
     render_markdown(doc, seccion(readme, "## Despliegue en la nube (Render)"), desplazamiento=0)
 
@@ -990,22 +995,24 @@ python pruebas\\e2e_tguts.py""")
     titulo(doc, "Anexo A. Usuarios de demostración", 1)
     render_markdown(doc, seccion(readme, "## Usuarios de demostración"), desplazamiento=0)
     titulo(doc, "Anexo B. Extracto de la evidencia de la ejecución", 1)
-    parrafo(doc,
-            "Archivo completo: `pruebas/salida_e2e_local.txt`. Extracto de la cabecera y de los últimos casos:",
-            tam=10)
-    lineas_ev = [l for l in evidencia.split("\n") if l.strip()]
-    extracto = "\n".join(lineas_ev[:6] + ["   ..."] + lineas_ev[-6:])
-    codigo(doc, extracto, tam=8)
+    if evidencia:
+        parrafo(doc,
+                "Extracto de la cabecera y de los últimos casos de la salida de la suite:",
+                tam=10)
+        lineas_ev = [l for l in evidencia.split("\n") if l.strip()]
+        extracto = "\n".join(lineas_ev[:6] + ["   ..."] + lineas_ev[-6:])
+        codigo(doc, extracto, tam=8)
+    else:
+        parrafo(doc,
+                "La salida íntegra de la ejecución del 22/10/2026 (99/99 APROBADOS) se generó con la suite E2E y se "
+                "retiró del repositorio junto con los scripts. El detalle caso por caso se conserva en TEST_RESULTS.md.",
+                tam=10)
     titulo(doc, "Anexo C. Documentación del repositorio", 1)
     agregar_tabla(doc, ["Archivo", "Contenido"], [
         ("`README.md`", "Puesta en marcha, usuarios, catálogo de requisitos, despliegue y notas."),
         ("`GUION.md`", "Guion de demostración paso a paso (todas las acciones en tablas)."),
-        ("`TEST_RESULTS.md`", "Registro de las 99 pruebas con evidencia y detalle de los defectos corregidos."),
+        ("`TEST_RESULTS.md`", "Registro histórico de las 99 pruebas y detalle de los defectos corregidos."),
         ("`DOCUMENTACION_TECNICA.md`", "Arquitectura, esquema de la base de datos, seguridad y decisiones de diseño."),
-        ("`pruebas/e2e_core.py`", "Suite de pruebas end-to-end (99 casos, bloques A–O)."),
-        ("`pruebas/e2e_local.py` / `pruebas/e2e_tguts.py`", "Ejecutores para XAMPP y para Docker."),
-        ("`pruebas/desplegar_local.ps1`", "Reconstrucción, redespliegue y comprobación de salud en Tomcat de XAMPP."),
-        ("`pruebas/salida_e2e_local.txt`", "Evidencia de la última ejecución real."),
         ("`tguts/sql/db_tgd_uts.sql`", "Esquema completo y datos de demostración."),
     ], tam=9.5)
 
@@ -1021,8 +1028,6 @@ def solo_zip():
     zip_salida = os.path.join(RAIZ, "Sistema_Trabajos_de_Grado_UTS.zip")
     incluidos = [
         "README.md", "GUION.md", "TEST_RESULTS.md", "DOCUMENTACION_TECNICA.md",
-        "pruebas/e2e_core.py", "pruebas/e2e_local.py", "pruebas/e2e_tguts.py",
-        "pruebas/desplegar_local.ps1", "pruebas/salida_e2e_local.txt",
         "tguts/sql/db_tgd_uts.sql", "tguts/sql/migracion_seguridad.sql",
         "tguts/pom.xml",
     ]

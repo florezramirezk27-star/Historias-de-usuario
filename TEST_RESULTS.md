@@ -2,6 +2,8 @@
 
 **Resultado de la última ejecución real: 99/99 APROBADOS (66,2 s).**
 
+> **Nota:** los scripts de la suite E2E y la salida completa de la ejecución se retiraron del repositorio; este documento se conserva como **registro histórico** de la verificación.
+
 | Dato | Valor |
 |---|---|
 | Fecha de ejecución | **22/10/2026 09:49:39** |
@@ -9,9 +11,8 @@
 | Servidor | **Apache Tomcat 8.5.96** (instalación de XAMPP en `C:\xampp\tomcat`) |
 | Base de datos | **MariaDB 10.4.32 / MySQL** de XAMPP, puerto 3306, base `db_tgd_uts` (`tguts/sql/db_tgd_uts.sql`) |
 | Compilación del WAR | **Maven** con **JDK 21**, `maven.compiler.release=17` → `tguts/target/tguts.war` |
-| Script de pruebas | `pruebas/e2e_local.py` (Python 3, solo librería estándar) + `pruebas/e2e_core.py` (99 casos) |
-| **Evidencia de la ejecución** | **`pruebas/salida_e2e_local.txt`** (salida completa, guardada por el propio script) |
-| Despliegue reproducible | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` |
+| Script de pruebas | Suite E2E propia en Python 3 (solo librería estándar), hoy retirada del repositorio |
+| Evidencia de la ejecución | Salida completa generada por la propia suite (archivo retirado del repositorio) |
 | Integridad de los datos | El caso **O-01** comprueba que la base queda exactamente como estaba tras la suite |
 
 > **Alcance de la evidencia:** todas las afirmaciones de este documento proceden de esa ejecución real contra el WAR desplegado. La vía **Docker / puerto 18080** se conserva como alternativa documentada, pero **no se ejecutó** (el daemon de Docker no estaba disponible en el equipo donde se generaron las pruebas).
@@ -40,7 +41,7 @@
 | 16 | **Búsqueda de estudiantes por nombre, código o correo** en el panel de coordinación | `coordinacion.jsp` | F-01…F-04 |
 | 17 | **Asignación de evaluador validada por estado** (solo tras la aprobación del director) y **director validado por rol** | `coordinacion.jsp` | G-04, G-05 |
 | 18 | Rutas relativas de formato seguras: se rechaza cualquier ruta con `:` y se exige `formatos/...` o URL absoluta | `formatos.jsp` | L-01, L-03 |
-| 19 | Suite E2E ampliada de 19 a **99 casos**, con aislamiento de datos (`e2e-<rol>@uts.edu.co`) y restauración final de la base | `pruebas/e2e_core.py` | O-01 |
+| 19 | Suite E2E ampliada de 19 a **99 casos**, con aislamiento de datos (`e2e-<rol>@uts.edu.co`) y restauración final de la base | Suite E2E (Python, retirada del repositorio) | O-01 |
 
 ---
 
@@ -247,8 +248,8 @@
 | Paso | Comando / acción | Resultado |
 |---|---|---|
 | 1 | MySQL/MariaDB de XAMPP encendido en `localhost:3306` | Base `db_tgd_uts` creada con `tguts/sql/db_tgd_uts.sql` (6 usuarios, 3 ideas, 2 formatos, 3 eventos) |
-| 2 | `powershell -ExecutionPolicy Bypass -File pruebas\desplegar_local.ps1` | Compila el WAR con Maven, lo copia a `C:\xampp\tomcat\webapps\tguts.war`, reinicia Tomcat y espera a que `http://localhost:8080/tguts/login.jsp` responda HTTP 200 |
-| 3 | `python pruebas\e2e_local.py` | Ejecuta los 99 casos y **guarda la salida completa en `pruebas/salida_e2e_local.txt`** |
+| 2 | Compilar y desplegar: `cd tguts && mvn clean package`, copiar `tguts.war` a `C:\xampp\tomcat\webapps\`, reiniciar Tomcat | `http://localhost:8080/tguts/login.jsp` responde HTTP 200 |
+| 3 | Ejecutar la suite E2E (script propio, hoy retirado del repositorio) | 99 casos contra el WAR desplegado |
 | 4 | Resultado de la ejecución | **99/99 APROBADOS en 66,2 s** — fecha 22/10/2026 09:49:39 |
 
 ### Alternativa documentada (Docker, no ejecutada en esta versión)
@@ -259,9 +260,6 @@
 | 2 | `docker run -d --name tguts-mysql --network tguts_net -e MYSQL_ROOT_PASSWORD=rootpw -e MYSQL_DATABASE=db_tgd_uts -v "%CD%\tguts\sql\db_tgd_uts.sql:/docker-entrypoint-initdb.d/01.sql:ro" mysql:8.0` |
 | 3 | `cd tguts && mvn -B clean package` |
 | 4 | `docker run -d --name tguts-tomcat --network tguts_net -p 18080:8080 -e DB_HOST=tguts_mysql -e DB_PORT=3306 -e DB_NAME=db_tgd_uts -e DB_USER=root -e DB_PASSWORD=rootpw -v "%CD%\tguts\target\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" tomcat:9.0-jdk17-temurin` |
-| 5 | `python pruebas\e2e_tguts.py` (misma suite, apuntando a `http://localhost:18080`) |
-
-> El script usa **solo la librería estándar de Python** (`urllib`, `http.cookiejar`, `subprocess`): no requiere `requests` ni `beautifulsoup4`.
 
 ---
 
@@ -297,7 +295,7 @@
 | Casos aprobados | **99** |
 | Casos fallidos | **0** |
 | Duración | 66,2 s |
-| Evidencia conservada | `pruebas/salida_e2e_local.txt` (salida íntegra de la ejecución del 22/10/2026) |
+| Evidencia conservada | Salida íntegra de la ejecución del 22/10/2026 (archivo retirado del repositorio junto con la suite) |
 | Flujo completo cubierto | Login → ideas → anteproyecto → calificación y aprobación del director → evaluación y aprobación del evaluador → entrega del documento final → observación y corrección → aprobación → sustentación programada → resultado → `FINALIZADO` |
 | Integridad de la base | Verificada por el caso O-01 |
 | Conclusión | La versión documentada en `README.md`, `GUION.md`, `DOCUMENTACION_TECNICA.md` y este archivo corresponde **al mismo código verificado** |

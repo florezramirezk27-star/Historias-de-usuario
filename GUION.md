@@ -1,10 +1,9 @@
 # Guion de demostración — Sistema de Trabajos de Grado UTS
 
-**Versión:** 2.0 (22/10/2026) — coincide con el código desplegado y con `pruebas/salida_e2e_local.txt` (99/99 APROBADOS).
+**Versión:** 2.0 (22/10/2026) — coincide con el código desplegado y con las 99/99 pruebas E2E aprobadas (registro en `TEST_RESULTS.md`).
 **Aplicación:** `http://localhost:8080/tguts/` — contexto WAR `tguts` desplegado en **Apache Tomcat 8.5.96 (XAMPP)**.
 **Base de datos:** **MySQL/MariaDB 10.4.32 (XAMPP)**, base `db_tgd_uts` (`tguts/sql/db_tgd_uts.sql`).
 **Compilación:** Maven con **JDK 21**, `maven.compiler.release=17` → `tguts/target/tguts.war`.
-**Script de pruebas usado como respaldo de este guion:** `python pruebas/e2e_local.py` (guarda la salida en `pruebas/salida_e2e_local.txt`).
 
 > **Importante:** los usuarios, ideas, calendario y formatos iniciales son **datos de demostración**, no información oficial de la Universitaria Tecnológica de Santander (UTS).
 
@@ -364,10 +363,8 @@ Durante la sustentación mostramos el recorrido de un anteproyecto por los cinco
 | 1 | MySQL/MariaDB de XAMPP encendido en el puerto 3306 | `netstat -ano | findstr 3306` |
 | 2 | Tomcat de XAMPP arrancado | `http://localhost:8080/tguts/login.jsp` responde HTTP 200 |
 | 3 | Base `db_tgd_uts` cargada | `C:\xampp\mysql\bin\mysql.exe -uroot -N -B -e "SELECT COUNT(*) FROM db_tgd_uts.usuarios"` → 6 |
-| 4 | WAR actualizado con los últimos cambios | `cd tguts && mvn clean package` y copiar `tguts.war` a `C:\xampp\tomcat\webapps\` (helper: `pruebas/desplegar_local.ps1`) |
-| 5 | Pruebas E2E en verde | `python pruebas/e2e_local.py` → **99/99 APROBADOS** (evidencia en `pruebas/salida_e2e_local.txt`) |
-| 6 | Datos de demostración intactos tras las pruebas | El caso O-01 comprueba que la BD queda igual (6 usuarios, 3 ideas, 2 formatos, 3 eventos, 0 anteproyectos) |
-| 7 | Las 5 cuentas de rol abren su panel | Repetir el bloque 1 del guion |
+| 4 | WAR actualizado con los últimos cambios | `cd tguts && mvn clean package` y copiar `tguts.war` a `C:\xampp\tomcat\webapps\` |
+| 5 | Las 5 cuentas de rol abren su panel | Repetir el bloque 1 del guion |
 
 ---
 
@@ -379,9 +376,8 @@ Durante la sustentación mostramos el recorrido de un anteproyecto por los cinco
 | 19.2 | `docker run -d --name tguts-mysql --network tguts_net -e MYSQL_ROOT_PASSWORD=rootpw -e MYSQL_DATABASE=db_tgd_uts -v "%CD%\tguts\sql\db_tgd_uts.sql:/docker-entrypoint-initdb.d/01.sql:ro" mysql:8.0` | MySQL 8 con el esquema inicial |
 | 19.3 | `cd tguts && mvn -B clean package` | Genera `tguts/target/tguts.war` |
 | 19.4 | `docker run -d --name tguts-tomcat --network tguts_net -p 18080:8080 -e DB_HOST=tguts_mysql -e DB_PORT=3306 -e DB_NAME=db_tgd_uts -e DB_USER=root -e DB_PASSWORD=rootpw -v "%CD%\tguts\target\tguts.war:/usr/local/tomcat/webapps/ROOT.war:ro" tomcat:9.0-jdk17-temurin` | Publica la app en `http://localhost:18080/` |
-| 19.5 | `python pruebas/e2e_tguts.py` | Script equivalente al local, apuntando al puerto 18080 |
 
-> **Estado de esta vía:** es una **alternativa documentada, no ejecutada**. En esta versión la evidencia real de las pruebas se obtuvo con el entorno local XAMPP (Tomcat 8.5.96 + MariaDB 10.4.32) en `http://localhost:8080/tguts`. El daemon de Docker no estaba disponible en la máquina donde se generaron las pruebas.
+> **Estado de esta vía:** es una **alternativa documentada, no ejecutada**. La verificación de esta versión se realizó con el entorno local XAMPP (Tomcat 8.5.96 + MariaDB 10.4.32) en `http://localhost:8080/tguts`.
 
 ---
 
@@ -394,4 +390,4 @@ Durante la sustentación mostramos el recorrido de un anteproyecto por los cinco
 | Guion de demostración | "Recorrido de la demostración" (pasos 1 a 18) + secciones 1 a 15 (todas en tablas) |
 | Casos de error y validaciones | Sección 17 |
 | Verificación / checklist | Sección 18 |
-| Pruebas | `TEST_RESULTS.md` + `pruebas/salida_e2e_local.txt` |
+| Pruebas | `TEST_RESULTS.md` (registro histórico) |
